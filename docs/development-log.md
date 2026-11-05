@@ -18,22 +18,26 @@
 | **Frontend build & lint** | `npm run lint` clean (0 errors), `npm run build` clean (dist created) | Verified |
 | **Connection & live-update check** | Verified green `connected`, red `unreachable`, and real-time polling updates | Verified |
 
-### Key Decisions & Adjustments
+---
 
-1. **Environment Manager:** Switched from ad-hoc `.venv` to Python 3.11 Conda environment named `emvest`.
-2. **Tailwind CSS v4:** Integrated `@tailwindcss/vite` plugin with `@import "tailwindcss";` in `src/styles/index.css`.
-3. **React 19 & ESLint 10 Compatibility:** Adjusted effect subscription pattern in `App.tsx` to satisfy React 19 `react-hooks/set-state-in-effect` linting rules.
+## Phase 2: UI Shell (Completed)
 
-### Issues to Track for Future Phases
+### Milestones & Evidence
 
-- **HTTPX / Starlette deprecation note in pytest:** Starlette prefers httpx2 in future versions. Harmless today; revisit during Phase 6 when expanding test suites.
-- **npm audit:** Track dependency audit findings before production build; avoid using `--force`.
-- **Requirements pinning:** Pin explicit versions in `backend/requirements.txt` before Phase 6.
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Layout & Shell** | Responsive `AppLayout` with desktop collapsible sidebar, mobile drawer overlay, and sticky `Navbar` | Verified |
+| **7 Routed Pages** | Configured `react-router-dom` with routes for `/`, `/analytics`, `/news`, `/watchlist`, `/chat`, `/profile`, `/settings` | Verified |
+| **Shared Primitives** | Reusable `Card`, `Badge` (6 variants), `EmptyState`, `Button` (5 variants), and accessible SVG `Icons` | Verified |
+| **Live Backend Hook** | Sidebar and Settings pages continuously monitor `/api/v1/health` and display real-time connection status | Verified |
+| **ESLint Verification** | `npm run lint` exited code 0 with 0 errors and 0 warnings (strictly compliant with React 19 rules) | Verified |
+| **Production Build** | `npm run build` compiled clean 39 modules with Vite and TypeScript | Verified |
 
 ---
 
-## Next Phase: Phase 2 (UI Shell)
+## Next Phase: Phase 3 (Analytics UI)
 
-- Implement responsive layout with collapsible sidebar and sticky navbar.
-- Configure React Router with 7 core routed pages (Dashboard, Watchlist, News, Analytics, AI Chat, Profile, Settings).
-- Build shared reusable UI primitives: `Card`, `Badge`, `EmptyState`, `Button`.
+- Implement interactive financial charting with Recharts.
+- Render FinBERT sentiment scores across timeframes (1D, 1W, 1M, 1Y).
+- Implement explicit "no data" states without fabricated numbers.
+- Sector and company comparative analytics views.

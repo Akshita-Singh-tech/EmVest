@@ -92,3 +92,4 @@ Emvest is an agentic investment intelligence platform designed to ingest news an
 1. **Environment Variables:** All secrets and environment-specific configs are managed via `.env` and typed in `app.core.config.Settings`.
 2. **CORS:** Strict origin policies configured in FastAPI (`CORSMiddleware`).
 3. **Reproducibility:** Dependencies tracked in `requirements.txt` (to be pinned prior to production) and `package-lock.json`.
+

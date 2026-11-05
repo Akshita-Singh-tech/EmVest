@@ -56,3 +56,4 @@ curl -i http://localhost:8000/api/v1/health
 ### Phase 8: AI Assistant
 - `POST /api/v1/chat/query` - Conversational query to the financial intelligence agent
 - `GET /api/v1/chat/history` - Retrieve prior conversation threads
+
