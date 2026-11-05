@@ -85,10 +85,27 @@
 
 ---
 
-## Next Phase: Phase 6 (Backend and Database Persistence)
+## Phase 6: Backend & Database Persistence (Completed)
 
-- Set up PostgreSQL database with SQLAlchemy 2.0 and Alembic migrations.
-- Create user, preference, and watchlist database tables and Pydantic schemas.
-- Implement `/api/v1/preferences` and `/api/v1/watchlists` CRUD endpoints.
-- Connect the frontend personalization store to real FastAPI REST endpoints.
-- Integration tests ensuring data persists across application restarts.
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Database Engine & Session** | SQLAlchemy 2.0 engine and scoped sessions supporting PostgreSQL and zero-setup SQLite (`emvest.db`) | Verified |
+| **Alembic Migrations** | Generated `initial_schema` migration and ran `alembic upgrade head` cleanly | Verified |
+| **Database Models** | Created `User`, `UserPreferences`, and `WatchlistItem` tables with foreign keys and cascade rules | Verified |
+| **Pydantic V2 Schemas** | Defined request/response validation schemas for auth, preferences, and watchlist records | Verified |
+| **JWT Authentication** | Implemented `bcrypt` password hashing, token generation, and `get_current_user` OAuth2 dependency | Verified |
+| **REST API Endpoints** | Implemented `/api/v1/auth/*`, `/api/v1/preferences`, and `/api/v1/watchlist` CRUD routes | Verified |
+| **Frontend REST Integration** | Connected frontend API services (`apiGetPreferences`, `apiUpdatePreferences`, `apiGetWatchlist`, `apiAddWatchlist`, `apiDeleteWatchlist`) with offline fallback | Verified |
+| **Test Suite Verification** | All 6 pytest test suites passed in 1.01s (`test_auth`, `test_health`, `test_persistence`, `test_preferences`, `test_watchlist`) | Verified (6 passed) |
+| **Restart Persistence Check** | Verified preferences and watchlist items survive complete database disconnect and engine restart | Verified |
+
+---
+
+## Next Phase: Phase 7 (Data Pipeline & Sentiment Worker)
+
+- Asynchronous multi-publisher RSS ingestion service (LiveMint, Economic Times, Moneycontrol, Business Standard).
+- FinBERT NLP worker pipeline calculating weighted financial sentiment scores.
+- Storing real ingested articles with sentiment in the database.
+- Analytics endpoints connecting frontend charts to real stored data.

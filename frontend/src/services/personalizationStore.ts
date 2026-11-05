@@ -5,6 +5,13 @@ import type {
   ProfileFormErrors,
 } from '../types/personalization'
 import { getCompanyBySymbol } from './masterData'
+import {
+  apiGetPreferences,
+  apiUpdatePreferences,
+  apiGetWatchlist,
+  apiAddWatchlist,
+  apiDeleteWatchlist,
+} from './api'
 
 const PROFILE_STORAGE_KEY = 'emvest_user_profile_v1'
 const PREFERENCES_STORAGE_KEY = 'emvest_user_preferences_v1'
@@ -91,7 +98,7 @@ export const defaultWatchlist: WatchlistRecord[] = [
 ]
 
 // ============================================================================
-// LocalStorage Read / Write operations (Drop-in ready for Phase 6 FastAPI REST)
+// Sync with FastAPI REST + LocalStorage Fallback
 // ============================================================================
 
 export function getUserProfile(): UserProfile {
@@ -127,8 +134,44 @@ export function saveUserPreferences(prefs: UserPreferences): void {
   try {
     localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(prefs))
     window.dispatchEvent(new CustomEvent('emvest_preferences_updated', { detail: prefs }))
+
+    // Background sync to FastAPI backend
+    void apiUpdatePreferences({
+      experience_level: 'Intermediate',
+      risk_tolerance: 'Moderate',
+      investment_horizon: 'Medium-Term',
+      tracked_sectors: prefs.trackedSectors,
+      tracked_symbols: prefs.trackedSymbols,
+      sentiment_alert_threshold: prefs.sentimentAlertThreshold,
+      email_alerts: prefs.emailAlerts,
+      daily_digest: prefs.dailyDigest,
+      digest_time: prefs.digestTime,
+      enable_ai_suggestions: prefs.enableAiSuggestions,
+    }).catch(() => {
+      // Backend offline or unreachable, local copy remains valid
+    })
   } catch {
     // Ignore storage write error
+  }
+}
+
+export async function syncPreferencesFromBackend(): Promise<UserPreferences | null> {
+  try {
+    const backendData = await apiGetPreferences()
+    const mapped: UserPreferences = {
+      trackedSectors: backendData.tracked_sectors,
+      trackedSymbols: backendData.tracked_symbols,
+      sentimentAlertThreshold: backendData.sentiment_alert_threshold,
+      emailAlerts: backendData.email_alerts,
+      dailyDigest: backendData.daily_digest,
+      digestTime: backendData.digest_time,
+      enableAiSuggestions: backendData.enable_ai_suggestions,
+    }
+    localStorage.setItem(PREFERENCES_STORAGE_KEY, JSON.stringify(mapped))
+    window.dispatchEvent(new CustomEvent('emvest_preferences_updated', { detail: mapped }))
+    return mapped
+  } catch {
+    return null
   }
 }
 
@@ -148,6 +191,31 @@ export function saveWatchlistRecords(records: WatchlistRecord[]): void {
     window.dispatchEvent(new CustomEvent('emvest_watchlist_updated', { detail: records }))
   } catch {
     // Ignore storage write error
+  }
+}
+
+export async function syncWatchlistFromBackend(): Promise<WatchlistRecord[] | null> {
+  try {
+    const items = await apiGetWatchlist()
+    const current = getWatchlistRecords()
+    const merged = items.map((bi) => {
+      const match = current.find((c) => c.symbol === bi.symbol)
+      return {
+        symbol: bi.symbol,
+        name: bi.name,
+        sector: bi.sector,
+        addedAt: bi.added_at ? bi.added_at.split('T')[0] : new Date().toISOString().split('T')[0],
+        price: match ? match.price : '₹1,000.00',
+        change: match ? match.change : '+0.00%',
+        sentiment: match ? match.sentiment : 'Neutral',
+        sentimentScore: match ? match.sentimentScore : 0.5,
+        notes: bi.notes || undefined,
+      } as WatchlistRecord
+    })
+    saveWatchlistRecords(merged)
+    return merged
+  } catch {
+    return null
   }
 }
 
@@ -173,17 +241,34 @@ export function addSymbolToWatchlist(symbol: string, notes?: string): { success:
   }
 
   saveWatchlistRecords([item, ...current])
+
+  // Sync to FastAPI Backend
+  void apiAddWatchlist({
+    symbol: upper,
+    name: item.name,
+    sector: item.sector,
+    notes: item.notes,
+  }).catch(() => {
+    // Offline fallback maintained
+  })
+
   return { success: true }
 }
 
 export function removeSymbolFromWatchlist(symbol: string): void {
+  const upper = symbol.toUpperCase().trim()
   const current = getWatchlistRecords()
-  const updated = current.filter((item) => item.symbol !== symbol.toUpperCase())
+  const updated = current.filter((item) => item.symbol !== upper)
   saveWatchlistRecords(updated)
+
+  // Sync deletion to FastAPI Backend
+  void apiDeleteWatchlist(upper).catch(() => {
+    // Offline fallback maintained
+  })
 }
 
 // ============================================================================
-// Form Validation (Exit Check Requirement: "Forms validated, state structured")
+// Form Validation
 // ============================================================================
 
 export function validateProfileForm(
@@ -192,23 +277,19 @@ export function validateProfileForm(
 ): ProfileFormErrors {
   const errors: ProfileFormErrors = {}
 
-  // Name validation
   if (!profile.fullName || profile.fullName.trim().length < 2) {
     errors.fullName = 'Full name must be at least 2 characters.'
   }
 
-  // Email validation regex
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!profile.email || !emailRegex.test(profile.email.trim())) {
     errors.email = 'Please provide a valid email address.'
   }
 
-  // Tracked sectors validation
   if (!preferences.trackedSectors || preferences.trackedSectors.length === 0) {
     errors.trackedSectors = 'Please select at least one priority industry sector.'
   }
 
-  // Tracked symbols validation
   if (!preferences.trackedSymbols || preferences.trackedSymbols.length === 0) {
     errors.trackedSymbols = 'Please select at least one primary equity to track.'
   }

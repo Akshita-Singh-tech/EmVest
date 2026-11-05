@@ -69,3 +69,4 @@ export function searchMasterCompanies(query: string, sectorFilter?: string): Mas
 export function getCompanyBySymbol(symbol: string): MasterCompany | undefined {
   return masterCompanyList.find((c) => c.symbol.toUpperCase() === symbol.toUpperCase())
 }
+

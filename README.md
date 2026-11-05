@@ -128,7 +128,7 @@ emvest/
 - [x] **Phase 3: Analytics UI** (Recharts, sentiment trajectory area charts, sector ranking bar charts, polarity donuts, company deep-dives, explicit no-data states)
 - [x] **Phase 4: News Intelligence UI** (Live multi-publisher feed, article cards, multi-criteria filters, detail view with FinBERT takeaways & market impact)
 - [x] **Phase 5: Personalization UI** (Profile, watchlists, sector selection, master NSE/BSE company picker, validated preferences)
-- [ ] **Phase 6: Backend & DB** (PostgreSQL, SQLAlchemy, Alembic, auth, preferences API)
+- [x] **Phase 6: Backend & DB** (SQLAlchemy 2.0, Alembic migrations, PostgreSQL/SQLite compatibility, JWT auth, preferences & watchlist REST APIs, tests)
 - [ ] **Phase 7: Data Pipeline** (RSS/scrapers, FinBERT sentiment worker, analytics endpoints)
 - [ ] **Phase 8: AI Assistant** (Retrieval, context building, LLM service, source citations)
 - [ ] **Phase 9: Integration & E2E Testing** (Full end-to-end testing, security review, polish)

@@ -47,3 +47,4 @@ export interface ProfileFormErrors {
   trackedSectors?: string
   trackedSymbols?: string
 }
+
