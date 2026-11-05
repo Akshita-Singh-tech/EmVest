@@ -141,7 +141,7 @@ export interface BackendChatSessionSummary {
   last_message_preview?: string | null
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8008/api/v1'
 
 export function getAuthToken(): string | null {
   try {
@@ -305,7 +305,7 @@ export async function apiSendChatQuery(payload: {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(3500),
+    signal: AbortSignal.timeout(8000),
   })
   if (!response.ok) {
     throw new Error(`Chat query failed with status ${response.status}`)
@@ -315,7 +315,7 @@ export async function apiSendChatQuery(payload: {
 
 export async function apiGetChatHistory(sessionId: string): Promise<BackendChatHistory> {
   const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
-    signal: AbortSignal.timeout(3500),
+    signal: AbortSignal.timeout(8000),
   })
   if (!response.ok) {
     throw new Error(`Failed to fetch chat history: ${response.status}`)
@@ -326,7 +326,7 @@ export async function apiGetChatHistory(sessionId: string): Promise<BackendChatH
 export async function apiClearChatHistory(sessionId: string): Promise<{ status: string; session_id: string }> {
   const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
     method: 'DELETE',
-    signal: AbortSignal.timeout(3500),
+    signal: AbortSignal.timeout(8000),
   })
   if (!response.ok) {
     throw new Error(`Failed to clear chat history: ${response.status}`)
@@ -341,7 +341,7 @@ export async function apiGetChatSessions(): Promise<BackendChatSessionSummary[]>
 
   const response = await fetch(`${API_BASE_URL}/chat/sessions`, {
     headers,
-    signal: AbortSignal.timeout(3500),
+    signal: AbortSignal.timeout(8000),
   })
   if (!response.ok) {
     throw new Error(`Failed to fetch chat sessions: ${response.status}`)
@@ -358,7 +358,7 @@ export async function apiCreateChatSession(title: string = 'New Conversation'): 
     method: 'POST',
     headers,
     body: JSON.stringify({ title }),
-    signal: AbortSignal.timeout(3500),
+    signal: AbortSignal.timeout(8000),
   })
   if (!response.ok) {
     throw new Error(`Failed to create chat session: ${response.status}`)

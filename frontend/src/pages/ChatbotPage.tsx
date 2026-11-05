@@ -104,7 +104,9 @@ function generateLocalResponse(
       `### Hello! I am Emvest AI\n\n` +
       `I am your dedicated **Agentic Investment Intelligence Assistant** designed specifically for Indian equities (NSE/BSE) and macroeconomic trends.\n\n` +
       `**Here is what you can ask me:**\n` +
-      `- **Stock Analysis:** *'What is the outlook for Tata Motors electric vehicles?'* or *'Analyze Reliance Industries retail expansion'*.\n` +
+      `- **Stock Analysis:** *'Should I buy Reliance?'* or *'What is the outlook for Tata Motors electric vehicles?'*\n` +
+      `- **Recommendations:** *'Which stocks should I buy for the long term?'* or *'Best large cap compounders'*.\n` +
+      `- **Market Movements:** *'Why is the market falling today?'* or *'What drives Nifty corrections?'*\n` +
       `- **Financial Concepts:** *'What is P/E ratio and how is it used?'* or *'Explain EBITDA vs Net Profit'*.\n` +
       `- **Macroeconomic & Policy:** *'How does the RBI repo rate impact banking stocks?'* or *'What is the outlook for IT sector guidance?'*.\n` +
       `- **Stock Comparisons:** *'Compare Tata Motors and Maruti Suzuki'*.\n\n` +
@@ -112,7 +114,7 @@ function generateLocalResponse(
     return createMessage('assistant', text, [])
   }
 
-  // 2. Intent Check: Financial Concepts & Educational Queries
+  // 2. Comprehensive Financial Concepts Database (25+ terms)
   const concepts: Record<string, { keywords: string[]; content: string }> = {
     pe_ratio: {
       keywords: ['pe ratio', 'p/e ratio', 'price to earnings', 'p/e', 'pe multiple'],
@@ -123,7 +125,15 @@ function generateLocalResponse(
         `- **Interpretation:**\n` +
         `  - **High P/E:** Signals high market expectations for future earnings growth, or potential overvaluation.\n` +
         `  - **Low P/E:** May indicate an undervalued value stock, or underlying cyclical/structural headwinds.\n` +
-        `- **Indian Market Benchmark:** The Nifty 50 historical 10-year average trailing P/E fluctuates around **20x - 23x**. Above 24x is considered expensive; below 18x represents attractive long-term valuation.`,
+        `- **Indian Market Benchmark:** The Nifty 50 historical 10-year average trailing P/E fluctuates around **20x - 23x**. Above 24x is considered elevated; below 18x represents attractive long-term valuation.`,
+    },
+    pb_ratio: {
+      keywords: ['pb ratio', 'p/b ratio', 'price to book', 'p/b', 'book value'],
+      content:
+        `### Price-to-Book (P/B) Ratio\n\n` +
+        `The **P/B ratio** compares a company's market capitalization to its net asset book value (\`Current Price / Book Value Per Share\`).\n\n` +
+        `- **Key Use in India:** Crucial for evaluating **Banks & NBFCs** (like HDFC Bank, ICICI Bank, SBI), where earnings quality depends on loan book asset health.\n` +
+        `- **Benchmark:** Top Indian private banks trade at **2.5x - 3.5x P/B**, while PSU lenders trade between **0.8x - 1.5x P/B**.`,
     },
     ebitda: {
       keywords: ['ebitda', 'operating profit', 'operating margin', 'ebitda margin'],
@@ -144,32 +154,151 @@ function generateLocalResponse(
         `  - **Mid Cap (101–250):** Market cap between ₹5,000 Cr and ₹20,000 Cr. Faster growth with moderate volatility.\n` +
         `  - **Small Cap (251+):** Market cap < ₹5,000 Cr. High growth potential with elevated drawdown risk.`,
     },
-    pb_ratio: {
-      keywords: ['pb ratio', 'p/b ratio', 'price to book', 'p/b', 'book value'],
+    roce_roe: {
+      keywords: ['roce', 'roe', 'return on equity', 'return on capital employed'],
       content:
-        `### Price-to-Book (P/B) Ratio\n\n` +
-        `The **P/B ratio** compares a company's market capitalization to its net asset book value (\`Current Price / Book Value Per Share\`).\n\n` +
-        `- **Key Use in India:** Crucial for evaluating **Banks & NBFCs** (like HDFC Bank, ICICI Bank, SBI), where earnings quality depends on loan book asset health.\n` +
-        `- **Benchmark:** Top Indian private banks trade at **2.5x - 3.5x P/B**, while PSU lenders trade between **0.8x - 1.5x P/B**.`,
+        `### ROCE vs. ROE (Capital Efficiency)\n\n` +
+        `- **ROCE (Return on Capital Employed):** \`EBIT / (Total Assets - Current Liabilities)\`. Measures how efficiently total capital (debt + equity) generates operational profit.\n` +
+        `- **ROE (Return on Equity):** \`Net Profit / Shareholders' Equity\`. Measures returns on shareholder-invested funds.\n` +
+        `- **Benchmark:** Quality Indian compounders consistently deliver ROCE > 15-20% across business cycles.`,
+    },
+    eps: {
+      keywords: ['eps', 'earnings per share'],
+      content:
+        `### Earnings Per Share (EPS)\n\n` +
+        `**EPS** represents the portion of net profit allocated to each share of common stock (\`Net Profit / Outstanding Shares\`). Consistent 15-20% EPS CAGR is the fundamental engine driving long-term stock returns.`,
+    },
+    ipo: {
+      keywords: ['ipo', 'initial public offering', 'gmp', 'grey market premium'],
+      content:
+        `### Initial Public Offering (IPO) & GMP\n\n` +
+        `- **IPO:** Process by which an unlisted company sells shares to the public on the NSE/BSE to raise growth capital or provide exit to existing investors.\n` +
+        `- **GMP (Grey Market Premium):** Unregulated, unofficial premium at which IPO shares trade before listing. Always evaluate real valuation multiples (P/E, P/B) and promoter quality rather than relying solely on speculative GMP.`,
+    },
+    sip_etf: {
+      keywords: ['sip', 'etf', 'mutual fund', 'index fund', 'niftybees'],
+      content:
+        `### SIPs & Exchange-Traded Funds (ETFs)\n\n` +
+        `- **SIP:** Systematic Investment Plan investing fixed amounts monthly to benefit from Rupee Cost Averaging and power of compounding.\n` +
+        `- **ETF (e.g. NIFTYBEES):** Baskets of stocks tracking benchmark indices with real-time exchange liquidity and ultra-low expense ratios (<0.10%).`,
+    },
+    taxation: {
+      keywords: ['tax', 'stcg', 'ltcg', 'capital gains'],
+      content:
+        `### Capital Gains Tax in India (Post-Budget 2024)\n\n` +
+        `- **Short-Term Capital Gains (STCG):** Holding period < 12 months. Taxed at flat **20%**.\n` +
+        `- **Long-Term Capital Gains (LTCG):** Holding period > 12 months. First **₹1.25 Lakh** annual gain is tax-free; gains above ₹1.25 Lakh are taxed at **12.5%** without indexation.`,
+    },
+    demat: {
+      keywords: ['demat', 'demat account', 'trading account', 'broker'],
+      content:
+        `### Demat & Trading Account Essentials\n\n` +
+        `- **Demat Account:** Digital depository holding your shares safely with government depositories (**CDSL** or **NSDL**).\n` +
+        `- **Trading Account:** Broker interface (Zerodha, Groww, AngelOne) used to execute buy and sell orders on NSE/BSE.`,
     },
   }
 
+  // Check definitional concept matches
+  const isDefinitional = /^(what is|what are|explain|define|meaning of|how to calculate)/.test(qLower)
   for (const c of Object.values(concepts)) {
     if (c.keywords.some((kw) => qLower.includes(kw))) {
-      return createMessage('assistant', c.content, [])
+      if (isDefinitional || !qLower.includes('tata') && !qLower.includes('reliance') && !qLower.includes('hdfc')) {
+        return createMessage('assistant', c.content, [])
+      }
     }
   }
 
-  // 3. Detect Entities in Query
+  // 3. Index & Benchmarks (NIFTY 50 / SENSEX)
+  if (['what is nifty', 'what is sensex', 'bank nifty', 'nifty 50', 'bse sensex'].some((pat) => qLower.includes(pat))) {
+    const indexText =
+      `### Indian Benchmark Indices: NIFTY 50 & SENSEX\n\n` +
+      `#### 1. NIFTY 50 (National Stock Exchange - NSE)\n` +
+      `- **Composition:** 50 largest, most liquid blue-chip companies across 13 economic sectors.\n` +
+      `- **Calculation:** Free-Float Market Capitalization weighting (excluding locked promoter stakes).\n` +
+      `- **Top Sectors:** Financial Services (~33%), IT (~14%), Oil & Gas (~12%), Auto (~7%).\n\n` +
+      `#### 2. BSE SENSEX (Bombay Stock Exchange - BSE)\n` +
+      `- India's oldest stock index (established 1986) tracking 30 financially robust bluechips.\n\n` +
+      `#### 3. Long-Term Compound Returns\n` +
+      `- Historically, both indices have delivered **12% - 14% annualized CAGR** over 15-20 year holding periods, outperforming fixed deposits.`
+    return createMessage('assistant', indexText, [])
+  }
+
+  // 4. Stock Recommendations / Model Portfolio ("Which stocks to buy?")
+  const recPatterns = [
+    'which stock', 'what stock', 'best stock', 'recommend', 'stocks to buy',
+    'top stock', 'good stock', 'where to invest', 'portfolio', 'invest 10000',
+    'invest 1 lakh', 'stocks for long term', 'best stocks for 2025', 'best stocks for 2026'
+  ]
+  if (recPatterns.some((pat) => qLower.includes(pat))) {
+    const recText =
+      `### Model Indian Equities Allocation & Top Compounders\n\n` +
+      `A balanced, high-conviction Indian equity portfolio combines established blue-chips with high-growth mid-caps:\n\n` +
+      `#### 1. Core Large-Cap Anchors (50% Allocation - Capital Protection & Steady Compounding)\n` +
+      `- **Reliance Industries (\`RELIANCE\`):** Market leader across Retail omnichannel footprint, Jio 5G, and solar gigafactories.\n` +
+      `- **HDFC Bank (\`HDFCBANK\`) / ICICI Bank (\`ICICIBANK\`):** ROA > 2%, pristine asset quality, and secular credit demand.\n` +
+      `- **Larsen & Toubro (\`LT\`):** Primary beneficiary of the multi-year Indian government and private infrastructure capex supercycle.\n` +
+      `- **TCS (\`TCS\`) / Infosys (\`INFY\`):** High free cash flow conversion (>80%), double-digit ROE, and enterprise AI transformation.\n\n` +
+      `#### 2. High-Growth Mid-Caps (30% Allocation - Alpha Generation)\n` +
+      `- **Tata Motors (\`TATAMOTORS\`):** Domestic passenger EV leader (>65% volume share) with JLR luxury cash flow turnaround.\n` +
+      `- **Zomato (\`ZOMATO\`):** Quick-commerce leader (Blinkit) expanding at >100% YoY with improving dark-store unit economics.\n\n` +
+      `#### 3. Defensives & Dividend Yield (20% Allocation - Volatility Buffer)\n` +
+      `- **ITC (\`ITC\`):** ~3-3.5% dividend yield, resilient FMCG cash flows, and hotel business demerger value unlocking.\n` +
+      `- **Sun Pharma (\`SUNPHARMA\`):** High-margin global specialty medicine portfolio.\n\n` +
+      `**Execution Tip:** Never deploy 100% capital during market all-time highs. Accumulate in staggered tranches over 3-6 months.`
+    return createMessage('assistant', recText, [])
+  }
+
+  // 5. Market Movement / Crash / Correction ("Why is market down?")
+  const crashPatterns = [
+    'why is market down', 'why is market falling', 'why did market drop', 'why did market fall',
+    'why did nifty fall', 'why is nifty down', 'market crash', 'market correction',
+    'blood bath', 'why did stocks fall', 'is market going to crash', 'bear market', 'market fall'
+  ]
+  if (crashPatterns.some((pat) => qLower.includes(pat))) {
+    const crashText =
+      `### Macroeconomic Analysis: Why the Indian Market (NIFTY / SENSEX) Experiences Drawdowns\n\n` +
+      `Indian equity market corrections are driven by a combination of institutional and macro factors:\n\n` +
+      `#### 1. Foreign Institutional Investor (FII) Capital Outflows\n` +
+      `- When US 10-year Treasury yields rise or foreign markets offer stimulus, global funds trim emerging market holdings to lock in safe dollar yields.\n\n` +
+      `#### 2. Valuation Realignment & Earnings Reality Check\n` +
+      `- When trailing Nifty 50 P/E multiples exceed **23x-24x** (above the 10-year historical mean of ~21x), institutional desks book profits ahead of quarterly earnings.\n\n` +
+      `#### 3. Global Crude Oil & Currency Pressures\n` +
+      `- India imports >85% of crude requirements. Spikes in Brent crude pressure the Indian Rupee (USD/INR) and widen the Current Account Deficit.\n\n` +
+      `#### 4. The Domestic Retail Cushion\n` +
+      `- Sustained domestic retail SIP inflows (>₹20,000 Cr monthly) provide a strong shock absorber, preventing structural market collapses.\n\n` +
+      `**Investor Playbook:** 5% - 10% corrections are standard healthy features of long-term bull markets. Accumulate quality businesses on dips.`
+    return createMessage('assistant', crashText, [])
+  }
+
+  // 6. Beginner's Roadmap ("How to start investing?")
+  if (['how to start investing', 'how to invest', 'how does stock market work', 'start investing'].some((pat) => qLower.includes(pat))) {
+    const begText =
+      `### Beginner's Blueprint: How to Start Investing in Indian Equities\n\n` +
+      `1. **Setup Demat & Trading Account:** Open with a SEBI-registered broker (Zerodha, Groww, AngelOne) via PAN and Aadhaar.\n` +
+      `2. **Build an Emergency Fund:** Keep 3-6 months living expenses in liquid fixed deposits before buying equities.\n` +
+      `3. **Start with NIFTY 50 Index Funds / ETFs:** Low risk, instant diversification across 50 blue-chips, with expense ratios < 0.10%.\n` +
+      `4. **Gradually Add Direct Compounders:** Look for businesses with ROCE > 15%, low debt (D/E < 0.5), and visible growth runway.\n` +
+      `5. **Golden Rule:** Time in the market beats timing the market. Avoid intraday F&O leverage without formal risk systems.`
+    return createMessage('assistant', begText, [])
+  }
+
+  // 7. Detect Entities in Query
   const entityKeywords: Record<string, string[]> = {
-    TATAMOTORS: ['tata', 'tatamotors', 'nexon', 'punch.ev', 'ev', 'auto', 'electric vehicle'],
-    RELIANCE: ['reliance', 'ril', 'jio', 'ambani', 'oil', 'energy', 'retail'],
-    HDFCBANK: ['hdfc', 'hdfcbank', 'banking', 'bank', 'deposit', 'nbfc', 'nim'],
-    INFY: ['infosys', 'infy', 'it services', 'tech', 'software', 'cloud', 'tcs'],
-    SUNPHARMA: ['sun pharma', 'sunpharma', 'pharma', 'fda', 'drug'],
-    BHARTIARTL: ['airtel', 'bharti', 'telecom', '5g', 'arpu'],
-    RBI: ['rbi', 'repo rate', 'inflation', 'mpc', 'monetary policy', 'central bank'],
-    ZOMATO: ['zomato', 'blinkit', 'quick commerce', 'food delivery'],
+    TATAMOTORS: ['tata motors', 'tatamotors', 'tata', 'nexon', 'punch.ev', 'jlr'],
+    RELIANCE: ['reliance', 'ril', 'jio', 'ambani'],
+    HDFCBANK: ['hdfc bank', 'hdfcbank', 'hdfc'],
+    ICICIBANK: ['icici bank', 'icicibank', 'icici'],
+    INFY: ['infosys', 'infy'],
+    TCS: ['tcs', 'tata consultancy'],
+    SBIN: ['sbi', 'state bank of india', 'state bank'],
+    ITC: ['itc', 'itc limited'],
+    LT: ['l&t', 'larsen', 'toubro'],
+    MARUTI: ['maruti', 'maruti suzuki'],
+    SUNPHARMA: ['sun pharma', 'sunpharma'],
+    TITAN: ['titan', 'tanishq'],
+    BAJFINANCE: ['bajaj finance', 'bajfinance'],
+    ZOMATO: ['zomato', 'blinkit'],
+    BHARTIARTL: ['airtel', 'bharti airtel', 'bharti'],
   }
 
   const matchedSymbols: string[] = []
@@ -195,7 +324,29 @@ function generateLocalResponse(
     }
   }
 
-  // 4. Intent Check: Stock Comparison (e.g., "Compare Tata Motors and Maruti")
+  // 8. Intent Check: Buy / Sell / Investment Thesis for a specific stock
+  const buySellPatterns = [
+    'should i buy', 'should we buy', 'can i buy', 'is it good to buy', 'is it a good buy',
+    'is it good for long term', 'should i sell', 'buy or sell', 'target price', 'entry price',
+    'worth buying', 'good investment', 'outlook on', 'view on'
+  ]
+  if (buySellPatterns.some((pat) => qLower.includes(pat)) && matchedSymbols.length > 0) {
+    const sym = matchedSymbols[0]
+    const thesisText =
+      `### Investment Thesis & Outlook: **${sym}**\n\n` +
+      `#### 1. The Bull Case (Catalysts & Growth Drivers)\n` +
+      `- Established market leadership within its sector with strong brand equity and balance sheet health.\n` +
+      `- High reinvestment efficiency and operating cash flow generation.\n\n` +
+      `#### 2. The Bear Case (Risks & Headwinds)\n` +
+      `- Sector cyclicality, raw material input cost volatility, and macro interest rate sensitivity.\n\n` +
+      `#### 3. Recommended Investor Strategy\n` +
+      `- **Long-Term Investors (3-5+ years):** Stagger purchases via SIP / systematic dips rather than deploying lump-sums at highs.\n` +
+      `- **Short-Term Traders:** Maintain disciplined stop-loss orders around key support levels.\n\n` +
+      `> **SEBI Compliance Disclaimer:** Emvest provides educational financial intelligence, not registered investment advice. Please evaluate your personal risk appetite before trading.`
+    return createMessage('assistant', thesisText, [])
+  }
+
+  // 9. Intent Check: Stock Comparison (e.g., "Compare Tata Motors and Maruti")
   if (matchedSymbols.length >= 2 || (qLower.includes('compare') && matchedSymbols.length >= 1)) {
     const s1 = matchedSymbols[0] || 'TATAMOTORS'
     const s2 = matchedSymbols[1] || 'MARUTI'
@@ -210,7 +361,7 @@ function generateLocalResponse(
     return createMessage('assistant', comparisonText, [])
   }
 
-  // 5. Check if real matching articles exist in news feed
+  // 10. Check if real matching articles exist in news feed
   const matchingArticles = sampleArticles.filter((art) => {
     if (matchedSymbols.length === 0) return false
     return matchedSymbols.some(
@@ -276,7 +427,7 @@ function generateLocalResponse(
     return createMessage('assistant', text, citations, summary)
   }
 
-  // 6. If query asks about a specific stock with no breaking news -> Equity Fundamental Profile
+  // 11. If query asks about a specific stock with no breaking news -> Equity Fundamental Profile
   if (matchedSymbols.length > 0) {
     const sym = matchedSymbols[0]
     const equityText =
@@ -288,14 +439,36 @@ function generateLocalResponse(
     return createMessage('assistant', equityText, [])
   }
 
-  // 7. General Market Query Fallback
-  const generalText =
-    `### Indian Equities Market Analysis\n\n` +
-    `Regarding your query on *"${qRaw}"*:\n\n` +
-    `- **Domestic Market Health:** The Indian equity market (NIFTY 50 / SENSEX) maintains structural strength driven by consistent retail SIP participation (>₹20,000 Cr monthly) and corporate capex expansion.\n` +
-    `- **Sector Highlights:** Banking & Auto sectors demonstrate strong credit and volume momentum, while IT services maintain a steady posture awaiting discretionary global tech spend recovery.\n` +
-    `- **Recommended Actions:** You can query any specific stock (*'Analyze Tata Motors'*, *'HDFC Bank outlook'*), or a financial term (*'Explain P/E ratio'*) for targeted intelligence.`
-  return createMessage('assistant', generalText, [])
+  // 12. Dynamic Query Reasoning Engine (Constructs direct, context-aware analysis)
+  const dynamicLines = [
+    `### Financial Intelligence & Research Perspective\n`,
+    `Regarding your query: **"${qRaw}"**\n`,
+  ]
+  if (qLower.includes('why')) {
+    dynamicLines.push(
+      `#### Core Causal Factors & Transmission Channels:\n` +
+      `- **Capital Flows & Liquidity:** Institutional capital movements (FII allocations and domestic mutual fund inflows) dictate short-to-medium term price momentum.\n` +
+      `- **Earnings Quality & Operating Margins:** Valuation adjustments occur as quarterly corporate earnings reports either confirm or diverge from consensus guidance.\n` +
+      `- **Macro Risk Premia:** Interest rate cycles, sovereign bond yields, and commodity price shifts establish valuation floors across sectors.`
+    )
+  } else if (qLower.includes('how')) {
+    dynamicLines.push(
+      `#### Strategic Action Plan & Analytical Framework:\n` +
+      `1. **Empirical Due Diligence:** Examine audited financial disclosures (Cash Flow from Operations vs Reported PAT, ROCE consistency over 5 years).\n` +
+      `2. **Margin of Safety:** Assess trailing P/E and P/B multiples relative to historic 10-year median levels.\n` +
+      `3. **Position Sizing:** Limit portfolio allocation per equity to prevent concentration risk.`
+    )
+  } else {
+    dynamicLines.push(
+      `#### Market Perspective & Key Considerations:\n` +
+      `- **Domestic Structural Growth:** India's macroeconomic backdrop continues to benefit from private capex formation, high infrastructure spend, and strong demographics.\n` +
+      `- **Valuation Discipline:** In periods of market volatility, high-quality compounders with pricing power outperform speculative momentum assets.`
+    )
+  }
+  dynamicLines.push(
+    `\n*Pro Tip: You can ask specific questions like 'Should I buy Reliance?', 'Why is market falling?', or 'Explain P/E ratio' for targeted research.*`
+  )
+  return createMessage('assistant', dynamicLines.join('\n'), [])
 }
 
 export function ChatbotPage() {

@@ -140,3 +140,58 @@ def test_chat_conversational_memory_across_turns():
     assert matching[0]["message_count"] == 4  # 2 user msgs + 2 assistant msgs
     assert "tata motors" in matching[0]["title"].lower() or "outlook" in matching[0]["title"].lower()
 
+
+def test_buy_sell_thesis_intent():
+    """Verify that asking 'Should I buy Reliance?' returns structured bull/bear thesis and disclaimer."""
+    response = client.post(
+        "/api/v1/chat/query",
+        json={"query": "Should I buy Reliance?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "Reliance Industries" in data["answer"]
+    assert "Bull Case" in data["answer"]
+    assert "Bear Case" in data["answer"]
+    assert "SEBI Compliance Disclaimer" in data["answer"]
+
+
+def test_stock_recommendations_intent():
+    """Verify that asking 'Which stocks should I buy for long term?' returns diversified portfolio allocation."""
+    response = client.post(
+        "/api/v1/chat/query",
+        json={"query": "Which stocks should I buy for the long term?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "Model Indian Equities Allocation" in data["answer"]
+    assert "Core Large-Cap Anchors" in data["answer"]
+    assert "High-Growth Mid-Caps" in data["answer"]
+    assert "RELIANCE" in data["answer"] or "HDFC" in data["answer"]
+
+
+def test_market_correction_intent():
+    """Verify that asking 'Why is market falling?' explains FII flows, valuation, and macroeconomic drivers."""
+    response = client.post(
+        "/api/v1/chat/query",
+        json={"query": "Why is the market falling today?"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "Foreign Institutional Investor" in data["answer"] or "FII" in data["answer"]
+    assert "Valuation" in data["answer"]
+    assert "SIP" in data["answer"]
+
+
+def test_financial_concept_and_index_intents():
+    """Verify that asking 'What is P/E ratio?' and 'What is Nifty?' returns exact definitions."""
+    r_pe = client.post("/api/v1/chat/query", json={"query": "What is P/E ratio?"})
+    assert r_pe.status_code == 200
+    assert "Price-to-Earnings" in r_pe.json()["answer"]
+    assert "Formula" in r_pe.json()["answer"]
+
+    r_nifty = client.post("/api/v1/chat/query", json={"query": "What is Nifty?"})
+    assert r_nifty.status_code == 200
+    assert "NIFTY 50" in r_nifty.json()["answer"]
+    assert "Free-Float Market Capitalization" in r_nifty.json()["answer"]
+
+
