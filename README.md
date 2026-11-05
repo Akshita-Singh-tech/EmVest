@@ -125,7 +125,7 @@ emvest/
 
 - [x] **Phase 1: Project Foundation** (Backend scaffolding, Conda 3.11 env, FastAPI health API, Vite + React 19 + Tailwind v4 frontend, verification)
 - [x] **Phase 2: UI Shell** (Responsive layout, sidebar, navbar, 7 routed pages, shared UI primitives: Card, Badge, EmptyState, Button)
-- [ ] **Phase 3: Analytics UI** (Recharts, sentiment charts, company/sector views)
+- [x] **Phase 3: Analytics UI** (Recharts, sentiment trajectory area charts, sector ranking bar charts, polarity donuts, company deep-dives, explicit no-data states)
 - [ ] **Phase 4: News Intelligence UI** (Live feed, article cards, filters, detail view)
 - [ ] **Phase 5: Personalization UI** (Profile, watchlists, sector selection, preferences)
 - [ ] **Phase 6: Backend & DB** (PostgreSQL, SQLAlchemy, Alembic, auth, preferences API)

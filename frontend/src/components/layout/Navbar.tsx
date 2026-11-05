@@ -94,3 +94,4 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
     </header>
   )
 }
+

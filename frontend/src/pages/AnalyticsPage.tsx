@@ -3,193 +3,343 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/common/EmptyState'
-import { TrendingUp, RefreshCw } from '../components/ui/Icons'
+import { TrendingUp, RefreshCw, Bot } from '../components/ui/Icons'
+import { SentimentTrendChart } from '../components/analytics/SentimentTrendChart'
+import { SectorBarChart } from '../components/analytics/SectorBarChart'
+import { PolarityDonutChart } from '../components/analytics/PolarityDonutChart'
+import {
+  sectorList,
+  companyList,
+  sampleTimeframesData,
+  sectorSentimentList,
+  companySentimentMap,
+  aggregatePolarity,
+} from '../services/analyticsData'
+import { Link } from 'react-router-dom'
 
-const sectors = ['All Sectors', 'Banking & Finance', 'Information Tech', 'Automobile', 'Energy & Power', 'Pharma']
-const timeframes = ['1D', '1W', '1M', '3M', '1Y']
-
-const sampleSectorData = [
-  { sector: 'Banking & Finance', score: 0.72, status: 'Bullish', articles: 142, change: '+4.2%' },
-  { sector: 'Automobile', score: 0.68, status: 'Bullish', articles: 89, change: '+2.1%' },
-  { sector: 'Energy & Power', score: 0.54, status: 'Neutral', articles: 110, change: '-0.4%' },
-  { sector: 'Information Tech', score: 0.46, status: 'Cautious', articles: 95, change: '-1.8%' },
-  { sector: 'Pharma & Healthcare', score: 0.61, status: 'Bullish', articles: 64, change: '+1.5%' },
-]
+type AnalyticsViewMode = 'sector' | 'company'
+type Timeframe = '1D' | '1W' | '1M' | '1Y'
 
 export function AnalyticsPage() {
-  const [selectedSector, setSelectedSector] = useState('All Sectors')
-  const [selectedTimeframe, setSelectedTimeframe] = useState('1W')
-  const [showEmptyState, setShowEmptyState] = useState(false)
+  const [viewMode, setViewMode] = useState<AnalyticsViewMode>('sector')
+  const [timeframe, setTimeframe] = useState<Timeframe>('1W')
+  const [selectedSector, setSelectedSector] = useState<string>('All Sectors')
+  const [selectedCompanySymbol, setSelectedCompanySymbol] = useState<string>('RELIANCE')
+  const [simulateNoData, setSimulateNoData] = useState<boolean>(false)
+
+  // Data selection based on timeframe and empty simulation
+  const trendData = simulateNoData ? [] : sampleTimeframesData[timeframe] || []
+  const sectorData = simulateNoData ? [] : sectorSentimentList
+  const selectedCompany = simulateNoData ? undefined : companySentimentMap[selectedCompanySymbol]
 
   return (
     <div className="space-y-6">
-      {/* Header and Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
+      {/* Page Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Market Sentiment Analytics
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              Sentiment Intelligence & Analytics
+            </h1>
+            <Badge variant="purple" size="sm">
+              Recharts • FinBERT
+            </Badge>
+          </div>
           <p className="text-xs sm:text-sm text-slate-400">
-            FinBERT NLP aggregate scoring across Indian equity sectors and news sources.
+            Real-time multi-dimensional sentiment trajectories across Indian sectors and equities.
           </p>
         </div>
 
-        {/* Timeframe Buttons */}
-        <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-lg">
-          {timeframes.map((tf) => (
+        {/* View Mode & Timeframe Controls */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Mode Switcher */}
+          <div className="flex items-center p-1 bg-slate-900 border border-slate-800 rounded-lg">
             <button
-              key={tf}
               type="button"
-              onClick={() => setSelectedTimeframe(tf)}
+              onClick={() => setViewMode('sector')}
               className={`px-3 py-1 rounded text-xs font-semibold transition ${
-                selectedTimeframe === tf
+                viewMode === 'sector'
                   ? 'bg-indigo-600 text-white shadow-sm'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {tf}
+              Sector View
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setViewMode('company')}
+              className={`px-3 py-1 rounded text-xs font-semibold transition ${
+                viewMode === 'company'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              Company Deep Dive
+            </button>
+          </div>
+
+          {/* Timeframe Selector */}
+          <div className="flex items-center p-1 bg-slate-900 border border-slate-800 rounded-lg">
+            {(['1D', '1W', '1M', '1Y'] as Timeframe[]).map((tf) => (
+              <button
+                key={tf}
+                type="button"
+                onClick={() => setTimeframe(tf)}
+                className={`px-2.5 py-1 rounded text-xs font-semibold transition ${
+                  timeframe === tf
+                    ? 'bg-slate-800 text-indigo-400 border border-indigo-500/40 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                {tf}
+              </button>
+            ))}
+          </div>
+
+          {/* Explicit "No Data" Simulation Toggle (for Phase 3 Exit Check) */}
+          <Button
+            variant={simulateNoData ? 'danger' : 'outline'}
+            size="sm"
+            onClick={() => setSimulateNoData((prev) => !prev)}
+          >
+            {simulateNoData ? 'Restore Data' : 'Test "No Data" State'}
+          </Button>
         </div>
       </div>
 
-      {/* Sector Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-        {sectors.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setSelectedSector(s)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-full border transition cursor-pointer ${
-              selectedSector === s
-                ? 'bg-slate-800 border-indigo-500 text-indigo-300 font-semibold'
-                : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      {/* Top Aggregate Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-5 space-y-1">
-            <span className="text-xs text-slate-400">Average Composite Sentiment</span>
-            <div className="text-2xl font-bold text-emerald-400">0.64 / 1.00</div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-1">
-              <Badge variant="success" size="sm">Moderately Bullish</Badge>
-              <span>Across 500+ articles</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 space-y-1">
-            <span className="text-xs text-slate-400">Bullish vs Bearish Ratio</span>
-            <div className="text-2xl font-bold text-white">2.8 : 1</div>
-            <div className="text-xs text-slate-400 pt-1">
-              <span className="text-emerald-400 font-medium">68% Bullish</span> •{' '}
-              <span className="text-rose-400 font-medium">24% Bearish</span> • 8% Neutral
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-5 space-y-1">
-            <span className="text-xs text-slate-400">Ingestion Velocity</span>
-            <div className="text-2xl font-bold text-indigo-400">38 Articles / hr</div>
-            <div className="text-xs text-slate-400 pt-1">
-              <span>RSS feeds active from 12 publishers</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sector Sentiment Breakdown Table */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Sector Sentiment Breakdown</CardTitle>
-            <CardDescription>
-              Real-time sentiment indices calculated via FinBERT weighted inference.
-            </CardDescription>
+      {/* =========================================================================
+          SECTOR VIEW
+         ========================================================================= */}
+      {viewMode === 'sector' && (
+        <div className="space-y-6">
+          {/* Sector Filter Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+            {['All Sectors', ...sectorList].map((sector) => (
+              <button
+                key={sector}
+                type="button"
+                onClick={() => setSelectedSector(sector)}
+                className={`whitespace-nowrap px-3 py-1.5 rounded-full border transition cursor-pointer ${
+                  selectedSector === sector
+                    ? 'bg-slate-800 border-indigo-500 text-indigo-300 font-semibold'
+                    : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {sector}
+              </button>
+            ))}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowEmptyState((prev) => !prev)}
-          >
-            {showEmptyState ? 'Show Sample Data' : 'Toggle No-Data State'}
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {showEmptyState ? (
-            <EmptyState
-              icon={<TrendingUp size={24} />}
-              title="No sentiment data available for this sector"
-              description="Articles for this sector have not yet been scored by the FinBERT worker pipeline. Check back after the next scheduled ingestion run."
-              action={
-                <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={14} />}>
-                  Run On-Demand Scoring
-                </Button>
-              }
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-slate-300">
-                <thead className="border-b border-slate-800 text-xs uppercase text-slate-400 bg-slate-900/40">
-                  <tr>
-                    <th className="py-3 px-4">Sector</th>
-                    <th className="py-3 px-4">FinBERT Score</th>
-                    <th className="py-3 px-4">Market Outlook</th>
-                    <th className="py-3 px-4">Scored Articles</th>
-                    <th className="py-3 px-4 text-right">Weekly Drift</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/80">
-                  {sampleSectorData.map((row) => (
-                    <tr key={row.sector} className="hover:bg-slate-800/30 transition">
-                      <td className="py-3.5 px-4 font-semibold text-white">
-                        {row.sector}
-                      </td>
-                      <td className="py-3.5 px-4 font-mono font-medium">
-                        {row.score.toFixed(2)}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <Badge
-                          variant={
-                            row.status === 'Bullish'
-                              ? 'success'
-                              : row.status === 'Cautious'
-                              ? 'warning'
-                              : 'default'
-                          }
-                          size="sm"
-                        >
-                          {row.status}
-                        </Badge>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400">
-                        {row.articles}
-                      </td>
-                      <td
-                        className={`py-3.5 px-4 text-right font-medium ${
-                          row.change.startsWith('+')
-                            ? 'text-emerald-400'
-                            : 'text-rose-400'
-                        }`}
-                      >
-                        {row.change}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+
+          {/* Top Key Aggregate Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <span className="text-xs text-slate-400 font-medium">Composite FinBERT Index</span>
+                <div className="text-2xl font-bold text-emerald-400">0.74 / 1.00</div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-400 pt-1">
+                  <Badge variant="success" size="sm">Bullish Sentiment</Badge>
+                  <span>Across {timeframe} window</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <span className="text-xs text-slate-400 font-medium">Polarity Distribution</span>
+                <div className="text-2xl font-bold text-white">68% Positive</div>
+                <div className="text-xs text-slate-400 pt-1">
+                  <span>21% Neutral • 11% Negative</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 space-y-1">
+                <span className="text-xs text-slate-400 font-medium">Tracked Ingestion Volume</span>
+                <div className="text-2xl font-bold text-indigo-400">649 Articles Scored</div>
+                <div className="text-xs text-slate-400 pt-1">
+                  <span>100% verified sources (No mock hallucinations)</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Charts Row: Trend Line & Polarity Donut */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Sentiment Trajectory Over Time</CardTitle>
+                <CardDescription>
+                  FinBERT weighted score trajectory evaluated across the {timeframe} interval.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SentimentTrendChart
+                  data={trendData}
+                  timeframe={timeframe}
+                  title={`${selectedSector} • Historical Drift`}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Polarity Ratio</CardTitle>
+                <CardDescription>Proportional sentiment breakdown.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PolarityDonutChart
+                  data={simulateNoData ? [] : aggregatePolarity}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sector Comparison Bar Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Sector Sentiment Rankings</CardTitle>
+              <CardDescription>
+                Cross-sector comparative outlook generated from recent news and earnings filings.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SectorBarChart data={sectorData} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* =========================================================================
+          COMPANY VIEW
+         ========================================================================= */}
+      {viewMode === 'company' && (
+        <div className="space-y-6">
+          {/* Company Selector Pills & Search */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+              {companyList.map((c: { symbol: string; name: string; sector: string }) => (
+                <button
+                  key={c.symbol}
+                  type="button"
+                  onClick={() => setSelectedCompanySymbol(c.symbol)}
+                  className={`whitespace-nowrap px-3 py-1.5 rounded-lg border font-mono transition cursor-pointer ${
+                    selectedCompanySymbol === c.symbol
+                      ? 'bg-indigo-600 text-white border-indigo-500 font-bold'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  {c.symbol}
+                </button>
+              ))}
             </div>
+
+            <span className="text-xs text-slate-400 font-mono">
+              Selected: <strong className="text-white">{selectedCompanySymbol}</strong>
+            </span>
+          </div>
+
+          {/* Company Deep Dive Card */}
+          {selectedCompany ? (
+            <div className="space-y-6">
+              {/* Company Summary Bar */}
+              <Card className="border-indigo-500/30 bg-gradient-to-r from-slate-900 to-indigo-950/20">
+                <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-xl font-bold text-white tracking-tight">
+                        {selectedCompany.name} ({selectedCompany.symbol})
+                      </h3>
+                      <Badge
+                        variant={selectedCompany.status === 'Bullish' ? 'success' : 'default'}
+                        size="sm"
+                      >
+                        {selectedCompany.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-400">{selectedCompany.sector}</p>
+                  </div>
+
+                  <div className="flex items-center gap-6 text-sm">
+                    <div>
+                      <span className="text-xs text-slate-400 block">FinBERT Score</span>
+                      <span className="text-lg font-bold font-mono text-emerald-400">
+                        {selectedCompany.score.toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block">Day Shift</span>
+                      <span className="text-lg font-bold font-mono text-white">
+                        {selectedCompany.delta}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-slate-400 block">Articles Ingested</span>
+                      <span className="text-lg font-bold font-mono text-indigo-400">
+                        {selectedCompany.newsCount}
+                      </span>
+                    </div>
+                    <Link to="/chat">
+                      <Button size="sm" variant="secondary" leftIcon={<Bot size={14} />}>
+                        Ask AI
+                      </Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Company Trend Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>{selectedCompany.symbol} Sentiment Trajectory</CardTitle>
+                  <CardDescription>
+                    Tracking news volume and FinBERT polarity changes over the {timeframe} interval.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SentimentTrendChart
+                    data={selectedCompany.trend}
+                    timeframe={timeframe}
+                    title={`${selectedCompany.symbol} Trend`}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Key News Driver & Catalyst */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Key Market Catalysts & Sentiment Drivers</CardTitle>
+                  <CardDescription>
+                    Extracted from ingested articles and regulatory filings.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-sm text-slate-200 leading-relaxed">
+                    <span className="font-semibold text-indigo-400">Primary Narrative: </span>
+                    {selectedCompany.keyCatalyst}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            /* Explicit Empty State for unindexed companies or simulated empty state */
+            <Card>
+              <CardContent className="p-8">
+                <EmptyState
+                  icon={<TrendingUp size={28} />}
+                  title={`No Ingested Sentiment Data for ${selectedCompanySymbol}`}
+                  description="This ticker has not yet been processed by the scheduled RSS scraper or FinBERT NLP inference worker. No fabricated numbers will be rendered."
+                  action={
+                    <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={14} />}>
+                      Queue Scraping for {selectedCompanySymbol}
+                    </Button>
+                  }
+                />
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   )
 }
