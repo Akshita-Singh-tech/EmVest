@@ -127,7 +127,7 @@ emvest/
 - [x] **Phase 2: UI Shell** (Responsive layout, sidebar, navbar, 7 routed pages, shared UI primitives: Card, Badge, EmptyState, Button)
 - [x] **Phase 3: Analytics UI** (Recharts, sentiment trajectory area charts, sector ranking bar charts, polarity donuts, company deep-dives, explicit no-data states)
 - [x] **Phase 4: News Intelligence UI** (Live multi-publisher feed, article cards, multi-criteria filters, detail view with FinBERT takeaways & market impact)
-- [ ] **Phase 5: Personalization UI** (Profile, watchlists, sector selection, preferences)
+- [x] **Phase 5: Personalization UI** (Profile, watchlists, sector selection, master NSE/BSE company picker, validated preferences)
 - [ ] **Phase 6: Backend & DB** (PostgreSQL, SQLAlchemy, Alembic, auth, preferences API)
 - [ ] **Phase 7: Data Pipeline** (RSS/scrapers, FinBERT sentiment worker, analytics endpoints)
 - [ ] **Phase 8: AI Assistant** (Retrieval, context building, LLM service, source citations)

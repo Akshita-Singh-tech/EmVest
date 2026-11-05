@@ -25,3 +25,4 @@ export interface NewsFilterOptions {
   source?: string
   sortBy?: 'newest' | 'highest-sentiment' | 'lowest-sentiment'
 }
+

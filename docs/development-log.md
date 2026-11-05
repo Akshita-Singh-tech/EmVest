@@ -69,9 +69,26 @@
 
 ---
 
-## Next Phase: Phase 5 (Personalization UI)
+## Phase 5: Personalization UI (Completed)
 
-- Structured investor profile state with risk tolerance strategies.
-- Company and sector multi-select master list with official NSE/BSE symbols.
-- Watchlist management with client-side state ready for Phase 6 backend persistence.
-- Validated preference forms with interactive feedback.
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Master Company Index** | Top 30+ official NSE/BSE listed companies (`masterCompanyList`) with industry sector, exchange, and market cap classifications | Verified |
+| **Structured State Schema** | Defined `UserProfile`, `UserPreferences`, and `WatchlistRecord` structures built as 1-to-1 mappings for Phase 6 PostgreSQL/Pydantic models | Verified |
+| **Validated Profile Forms** | Implemented `validateProfileForm`: checks non-empty names, regex email validation, sector selection, and company requirements | Verified |
+| **Master Company Picker** | `CompanyPicker` component supporting live search, sector filtering, multi-tag additions, and badge removal | Verified |
+| **Watchlist State Integration** | Autocomplete addition, notes tracking, duplicate detection, and live updates via custom event bus | Verified |
+| **FinBERT Alert Controls** | Adjustable sensitivity slider for conviction triggers (`0.50` - `0.95`) + notification toggles | Verified |
+| **Code Quality Checks** | `npm run lint` clean (0 errors, 0 warnings); `npm run build` compiled cleanly into production bundle | Verified |
+
+---
+
+## Next Phase: Phase 6 (Backend and Database Persistence)
+
+- Set up PostgreSQL database with SQLAlchemy 2.0 and Alembic migrations.
+- Create user, preference, and watchlist database tables and Pydantic schemas.
+- Implement `/api/v1/preferences` and `/api/v1/watchlists` CRUD endpoints.
+- Connect the frontend personalization store to real FastAPI REST endpoints.
+- Integration tests ensuring data persists across application restarts.
