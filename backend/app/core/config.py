@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     enable_twitter_ingestion: bool = False
     twitter_bearer_token: Optional[str] = None
 
+    # Phase 8: AI Assistant & LLM Service (Keys stay exclusively on backend)
+    gemini_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    default_llm_provider: str = "auto"  # "auto", "gemini", "openai", "deterministic"
+
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
 
 

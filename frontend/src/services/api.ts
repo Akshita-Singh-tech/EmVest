@@ -88,7 +88,75 @@ export interface BackendCompanyAnalytics {
   }>
 }
 
+export interface BackendCitation {
+  id: number
+  title: string
+  source: string
+  url: string
+  published_at?: string
+  sentiment: string
+  sentiment_score: number
+  symbols?: string[]
+  sector?: string
+}
+
+export interface BackendSentimentSummary {
+  aggregate_score: number
+  sentiment_label: string
+  article_count: number
+  positive_count: number
+  neutral_count: number
+  negative_count: number
+}
+
+export interface BackendChatResponse {
+  session_id: string
+  role: string
+  answer: string
+  citations: BackendCitation[]
+  suggested_followups: string[]
+  sentiment_summary?: BackendSentimentSummary
+}
+
+export interface BackendChatMessageRecord {
+  id: number
+  session_id: string
+  role: 'user' | 'assistant'
+  content: string
+  citations?: BackendCitation[]
+  created_at: string
+}
+
+export interface BackendChatHistory {
+  session_id: string
+  messages: BackendChatMessageRecord[]
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+
+export function getAuthToken(): string | null {
+  try {
+    return localStorage.getItem('emvest_token')
+  } catch {
+    return null
+  }
+}
+
+export function setAuthToken(token: string): void {
+  try {
+    localStorage.setItem('emvest_token', token)
+  } catch {
+    // ignore
+  }
+}
+
+export function clearAuthToken(): void {
+  try {
+    localStorage.removeItem('emvest_token')
+  } catch {
+    // ignore
+  }
+}
 
 export async function fetchHealth(): Promise<HealthResponse> {
   const response = await fetch(`${API_BASE_URL}/health`)
@@ -211,6 +279,44 @@ export async function apiTriggerIngestion(): Promise<{ status: string; newly_ing
   const response = await fetch(`${API_BASE_URL}/news/ingest`, { method: 'POST' })
   if (!response.ok) {
     throw new Error(`Failed to trigger ingestion: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiSendChatQuery(payload: {
+  query: string;
+  session_id?: string;
+  symbols?: string[];
+}): Promise<BackendChatResponse> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE_URL}/chat/query`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    throw new Error(`Chat query failed with status ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiGetChatHistory(sessionId: string): Promise<BackendChatHistory> {
+  const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch chat history: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiClearChatHistory(sessionId: string): Promise<{ status: string; session_id: string }> {
+  const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to clear chat history: ${response.status}`)
   }
   return response.json()
 }

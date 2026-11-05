@@ -122,8 +122,27 @@
 
 ---
 
-## Next Phase: Phase 8 (AI Assistant & Agentic Retrieval)
+## Phase 8: AI Assistant & Grounded Retrieval (Completed)
 
-- Context-aware retrieval agent indexing stored articles, user preferences, and watchlists.
-- AI query endpoint `POST /api/v1/chat/query` with source citations and conversation history.
-- Frontend Chatbot interface connected to live backend query stream.
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Database Chat Persistence** | Created `ChatMessage` table with session IDs, timestamps, and JSON citations | Verified |
+| **Alembic Migration** | Generated `ec7b64430c0a_add_chat_messages_table.py` and ran `alembic upgrade head` | Verified |
+| **Agentic Retrieval Engine** | Developed `ChatAgent` with Indian equity ticker detection, sector mapping, and multi-field article scoring | Verified |
+| **Strict Citation Grounding** | All answers cite stored database articles; every citation ID links to real verified DB record | Verified |
+| **Security & Key Boundary** | External LLM keys (`GEMINI_API_KEY`, `OPENAI_API_KEY`) stay strictly backend-internal with zero frontend exposure | Verified |
+| **Chat REST Endpoints** | Implemented `POST /api/v1/chat/query`, `GET /api/v1/chat/history/{session_id}`, and `DELETE /api/v1/chat/history/{session_id}` | Verified |
+| **Backend Test Suite** | Added `test_chat.py` with 4 tests (session generation, equity targeting, DB grounding, session clear); 15 total backend tests pass in 1.07s | Verified (15 passed) |
+| **Frontend Conversational UI** | Connected `ChatbotPage.tsx` and `services/api.ts` with real-time query stream, interactive citations, and session reset | Verified |
+| **Code Quality Checks** | `npm run lint` clean (0 errors, 0 warnings); `npm run build` compiled cleanly into production bundle | Verified |
+
+---
+
+## Next Phase: Phase 9 (Integration & End-to-End Testing)
+
+- Full application end-to-end integration tests (`test_e2e.py`).
+- Complete mobile responsiveness and UX navigation audit across all 7 views.
+- Security review (CORS boundaries, credential handling, token expiration).
+- Final documentation, architecture diagrams, and release readiness.

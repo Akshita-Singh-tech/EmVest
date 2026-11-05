@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.database.session import Base, engine, SessionLocal
-from app.api import health, auth, preferences, watchlist, news, analytics
+from app.api import health, auth, preferences, watchlist, news, analytics, chat
 from app.services.ingestion import run_ingestion_pipeline
 
 # Initialize database schema tables on startup
@@ -37,6 +37,7 @@ app.include_router(preferences.router, prefix="/api/v1")
 app.include_router(watchlist.router, prefix="/api/v1")
 app.include_router(news.router, prefix="/api/v1")
 app.include_router(analytics.router, prefix="/api/v1")
+app.include_router(chat.router, prefix="/api/v1")
 
 
 @app.get("/")
