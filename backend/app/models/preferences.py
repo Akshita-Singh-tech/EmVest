@@ -27,3 +27,4 @@ class UserPreferences(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
     user = relationship("User", back_populates="preferences")
+

@@ -41,3 +41,4 @@ def test_auth_signup_login_me():
     me_data = me_res.json()
     assert me_data["email"] == unique_email
     assert me_data["full_name"] == "Test Trader"
+

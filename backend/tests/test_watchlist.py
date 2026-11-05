@@ -43,3 +43,4 @@ def test_watchlist_crud_lifecycle():
     assert list_res_after.status_code == 200
     symbols_after = [item["symbol"] for item in list_res_after.json()]
     assert symbol not in symbols_after
+

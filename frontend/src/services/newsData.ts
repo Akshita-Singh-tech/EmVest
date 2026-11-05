@@ -1,4 +1,5 @@
 import type { NewsArticle, NewsFilterOptions } from '../types/news'
+import { apiGetNewsArticles } from './api'
 
 export const sampleArticles: NewsArticle[] = [
   {
@@ -14,7 +15,7 @@ export const sampleArticles: NewsArticle[] = [
     publishedAt: '25 mins ago',
     readTime: '3 min read',
     url: 'https://www.livemint.com',
-    sector: 'Banking & Macro',
+    sector: 'Banking & Financial Services',
     symbols: ['HDFCBANK', 'SBIN', 'ICICIBANK', 'KOTAKBANK'],
     sentiment: 'Positive',
     sentimentScore: 0.82,
@@ -39,8 +40,8 @@ export const sampleArticles: NewsArticle[] = [
     publishedAt: '1 hour ago',
     readTime: '4 min read',
     url: 'https://economictimes.indiatimes.com',
-    sector: 'Automobile',
-    symbols: ['TATAMOTORS', 'M&M'],
+    sector: 'Automobile & Auto Ancillary',
+    symbols: ['TATAMOTORS', 'MARUTI'],
     sentiment: 'Positive',
     sentimentScore: 0.76,
     sentimentConfidence: 91,
@@ -64,7 +65,7 @@ export const sampleArticles: NewsArticle[] = [
     publishedAt: '2 hours ago',
     readTime: '5 min read',
     url: 'https://www.moneycontrol.com',
-    sector: 'Information Tech',
+    sector: 'Information Technology',
     symbols: ['INFY', 'TCS', 'WIPRO', 'HCLTECH'],
     sentiment: 'Negative',
     sentimentScore: -0.42,
@@ -89,7 +90,7 @@ export const sampleArticles: NewsArticle[] = [
     publishedAt: '4 hours ago',
     readTime: '3 min read',
     url: 'https://www.business-standard.com',
-    sector: 'Retail & Conglomerate',
+    sector: 'Energy, Oil & Gas',
     symbols: ['RELIANCE'],
     sentiment: 'Positive',
     sentimentScore: 0.69,
@@ -114,7 +115,7 @@ export const sampleArticles: NewsArticle[] = [
     publishedAt: '6 hours ago',
     readTime: '4 min read',
     url: 'https://www.reuters.com',
-    sector: 'Energy & Commodities',
+    sector: 'Energy, Oil & Gas',
     symbols: ['ONGC', 'BPCL', 'IOC'],
     sentiment: 'Neutral',
     sentimentScore: 0.04,
@@ -139,7 +140,7 @@ export const sampleArticles: NewsArticle[] = [
     publishedAt: '8 hours ago',
     readTime: '3 min read',
     url: 'https://economictimes.indiatimes.com',
-    sector: 'Pharmaceuticals',
+    sector: 'Pharmaceuticals & Healthcare',
     symbols: ['SUNPHARMA'],
     sentiment: 'Positive',
     sentimentScore: 0.88,
@@ -193,6 +194,39 @@ export function getNewsArticles(options: NewsFilterOptions = {}): NewsArticle[] 
   return list
 }
 
+export async function fetchLiveNewsArticles(options: NewsFilterOptions = {}): Promise<NewsArticle[]> {
+  try {
+    const backendItems = await apiGetNewsArticles({
+      search: options.searchQuery,
+      sentiment: options.sentiment,
+      sector: options.sector,
+      source: options.source,
+    })
+    if (backendItems && backendItems.length > 0) {
+      return backendItems.map((bi) => ({
+        id: String(bi.id),
+        title: bi.title,
+        summary: bi.summary,
+        content: [bi.content],
+        source: bi.source,
+        publishedAt: bi.published_at ? new Date(bi.published_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+        readTime: '3 min read',
+        url: bi.url,
+        sector: bi.sector,
+        symbols: bi.symbols || [],
+        sentiment: bi.sentiment,
+        sentimentScore: bi.sentiment_score,
+        sentimentConfidence: Math.round(bi.sentiment_confidence * 100),
+        keyTakeaways: bi.key_takeaways || [],
+        marketImpact: bi.market_impact || '',
+      }))
+    }
+  } catch {
+    // Backend offline, fallback to local dataset
+  }
+  return getNewsArticles(options)
+}
+
 export function getArticleById(id: string): NewsArticle | undefined {
   return sampleArticles.find((a) => a.id === id)
 }
@@ -206,4 +240,3 @@ export function getUniqueSources(): string[] {
   const set = new Set(sampleArticles.map((a) => a.source))
   return Array.from(set)
 }
-

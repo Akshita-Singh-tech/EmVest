@@ -103,9 +103,27 @@
 
 ---
 
-## Next Phase: Phase 7 (Data Pipeline & Sentiment Worker)
+## Phase 7: Data Pipeline & Sentiment Worker (Completed)
 
-- Asynchronous multi-publisher RSS ingestion service (LiveMint, Economic Times, Moneycontrol, Business Standard).
-- FinBERT NLP worker pipeline calculating weighted financial sentiment scores.
-- Storing real ingested articles with sentiment in the database.
-- Analytics endpoints connecting frontend charts to real stored data.
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Database Article Model** | Created `Article` model with indices on published date, sector, and sentiment polarity | Verified |
+| **Alembic Migration** | Generated `94764b6aac83_add_articles_table.py` and upgraded database to head | Verified |
+| **FinBERT NLP Worker** | Lightweight financial dictionary and rule-based FinBERT scoring service with confidence bounds and polarity determination | Verified |
+| **RSS Ingestion Scraper** | Multi-publisher RSS feed parser supporting Economic Times, LiveMint, Business Standard, and Moneycontrol | Verified |
+| **Twitter / X Service** | Flag-gated X/Twitter ingestion module (`enable_twitter_ingestion = False`) protecting API quota & legal bounds | Verified |
+| **Database Seeding & Ingestion** | Ingestion pipeline auto-seeds high quality financial news on startup and deduplicates incoming articles | Verified |
+| **News & Analytics APIs** | Implemented `GET /api/v1/news`, `GET /api/v1/news/{id}`, `GET /api/v1/analytics/summary`, and `GET /api/v1/analytics/trends` | Verified |
+| **Backend Test Suite** | Added `test_pipeline.py`; all 11 backend test suites passed cleanly | Verified (11 passed) |
+| **Frontend Live Feed Integration** | Connected `NewsPage.tsx` and `services/newsData.ts` to live backend news endpoint with graceful fallback | Verified |
+| **Frontend Quality Checks** | `npm run lint` clean (0 errors, 0 warnings); `npm run build` compiled client bundle cleanly | Verified |
+
+---
+
+## Next Phase: Phase 8 (AI Assistant & Agentic Retrieval)
+
+- Context-aware retrieval agent indexing stored articles, user preferences, and watchlists.
+- AI query endpoint `POST /api/v1/chat/query` with source citations and conversation history.
+- Frontend Chatbot interface connected to live backend query stream.

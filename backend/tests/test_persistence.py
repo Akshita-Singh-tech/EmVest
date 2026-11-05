@@ -46,3 +46,4 @@ def test_preferences_and_watchlist_persist_across_reconnect():
 
     db2.close()
     engine2.dispose()
+

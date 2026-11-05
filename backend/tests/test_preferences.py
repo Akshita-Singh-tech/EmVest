@@ -43,3 +43,4 @@ def test_update_preferences_persists():
     assert persisted["experience_level"] == "Advanced"
     assert persisted["risk_tolerance"] == "Aggressive"
     assert persisted["sentiment_alert_threshold"] == 0.85
+

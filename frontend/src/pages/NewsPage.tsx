@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -11,6 +11,7 @@ import {
   getArticleById,
   getUniqueSectors,
   getUniqueSources,
+  fetchLiveNewsArticles,
 } from '../services/newsData'
 import type { NewsArticle, SentimentPolarity } from '../types/news'
 
@@ -25,28 +26,45 @@ export function NewsPage() {
   const [selectedSource, setSelectedSource] = useState('All Publishers')
   const [sortBy, setSortBy] = useState<'newest' | 'highest-sentiment' | 'lowest-sentiment'>('newest')
   const [selectedArticleState, setSelectedArticleState] = useState<NewsArticle | null>(null)
+  const [liveArticles, setLiveArticles] = useState<NewsArticle[]>(() => getNewsArticles())
 
   const sectors = useMemo(() => ['All Sectors', ...getUniqueSectors()], [])
   const sources = useMemo(() => ['All Publishers', ...getUniqueSources()], [])
 
-  // Filtered articles list
-  const filteredArticles = useMemo(() => {
-    return getNewsArticles({
+  useEffect(() => {
+    let isCurrent = true
+    fetchLiveNewsArticles({
       searchQuery,
       sentiment: selectedSentiment,
       sector: selectedSector,
       source: selectedSource,
       sortBy,
     })
+      .then((items) => {
+        if (isCurrent && items && items.length > 0) {
+          setLiveArticles(items)
+        }
+      })
+      .catch(() => {
+        // Safe fallback already handled in service
+      })
+    return () => {
+      isCurrent = false
+    }
   }, [searchQuery, selectedSentiment, selectedSector, selectedSource, sortBy])
+
+  // Filtered articles list
+  const filteredArticles = useMemo(() => {
+    return liveArticles
+  }, [liveArticles])
 
   // Active article: either from URL params (e.g. /news/:id) or state
   const activeArticle = useMemo(() => {
     if (id) {
-      return getArticleById(id) || null
+      return liveArticles.find((a) => a.id === id) || getArticleById(id) || null
     }
     return selectedArticleState
-  }, [id, selectedArticleState])
+  }, [id, liveArticles, selectedArticleState])
 
   const handleOpenArticle = (article: NewsArticle) => {
     setSelectedArticleState(article)

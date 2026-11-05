@@ -25,6 +25,69 @@ export interface BackendWatchlistItem {
   added_at?: string
 }
 
+export interface BackendArticle {
+  id: number
+  external_id: string
+  title: string
+  summary: string
+  content: string
+  source: string
+  url: string
+  published_at: string
+  sector: string
+  symbols: string[]
+  sentiment: 'Positive' | 'Neutral' | 'Negative'
+  sentiment_score: number
+  sentiment_confidence: number
+  key_takeaways: string[]
+  market_impact?: string
+}
+
+export interface BackendOverview {
+  composite_score: number
+  overall_sentiment: string
+  total_articles: number
+  polarity: {
+    positive: number
+    neutral: number
+    negative: number
+    positive_percentage: number
+    neutral_percentage: number
+    negative_percentage: number
+  }
+  trajectory: Array<{
+    date: string
+    score: number
+    source: string
+    title: string
+  }>
+}
+
+export interface BackendSectorAnalytics {
+  sectors: Array<{
+    sector: string
+    score: number
+    article_count: number
+    status: string
+    momentum: string
+  }>
+}
+
+export interface BackendCompanyAnalytics {
+  symbol: string
+  score: number
+  status: string
+  article_count: number
+  catalysts: string[]
+  recent_articles: Array<{
+    title: string
+    source: string
+    score: number
+    sentiment: string
+    published_at: string
+  }>
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 export async function fetchHealth(): Promise<HealthResponse> {
@@ -34,6 +97,10 @@ export async function fetchHealth(): Promise<HealthResponse> {
   }
   return response.json()
 }
+
+// ============================================================================
+// Preferences & Watchlists (Phase 6)
+// ============================================================================
 
 export async function apiGetPreferences(): Promise<BackendPreferences> {
   const response = await fetch(`${API_BASE_URL}/preferences`)
@@ -88,4 +155,62 @@ export async function apiDeleteWatchlist(symbol: string): Promise<void> {
   if (!response.ok && response.status !== 404) {
     throw new Error(`Failed to delete item: ${response.status}`)
   }
+}
+
+// ============================================================================
+// Real Ingested News & Analytics (Phase 7)
+// ============================================================================
+
+export async function apiGetNewsArticles(options: {
+  search?: string
+  sentiment?: string
+  sector?: string
+  source?: string
+  symbol?: string
+} = {}): Promise<BackendArticle[]> {
+  const params = new URLSearchParams()
+  if (options.search) params.set('search', options.search)
+  if (options.sentiment && options.sentiment !== 'All') params.set('sentiment', options.sentiment)
+  if (options.sector && options.sector !== 'All Sectors') params.set('sector', options.sector)
+  if (options.source && options.source !== 'All Publishers') params.set('source', options.source)
+  if (options.symbol) params.set('symbol', options.symbol)
+
+  const url = `${API_BASE_URL}/news?${params.toString()}`
+  const response = await fetch(url)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch news feed: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiGetAnalyticsOverview(): Promise<BackendOverview> {
+  const response = await fetch(`${API_BASE_URL}/analytics/overview`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch analytics overview: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiGetSectorAnalytics(): Promise<BackendSectorAnalytics> {
+  const response = await fetch(`${API_BASE_URL}/analytics/sectors`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch sector analytics: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiGetCompanyAnalytics(symbol: string): Promise<BackendCompanyAnalytics> {
+  const response = await fetch(`${API_BASE_URL}/analytics/company/${symbol.toUpperCase()}`)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch company analytics for ${symbol}: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiTriggerIngestion(): Promise<{ status: string; newly_ingested: number; total_articles: number }> {
+  const response = await fetch(`${API_BASE_URL}/news/ingest`, { method: 'POST' })
+  if (!response.ok) {
+    throw new Error(`Failed to trigger ingestion: ${response.status}`)
+  }
+  return response.json()
 }
