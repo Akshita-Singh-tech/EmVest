@@ -187,3 +187,4 @@ export const aggregatePolarity: PolarityData[] = [
   { name: 'Neutral', value: 21, color: '#64748b' },  // slate-500
   { name: 'Negative', value: 11, color: '#f43f5e' }, // rose-500
 ]
+

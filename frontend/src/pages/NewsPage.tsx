@@ -1,206 +1,226 @@
-import { useState } from 'react'
-import { Card, CardContent } from '../components/ui/Card'
+import { useState, useMemo } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
-import { Search, ExternalLink, RefreshCw } from '../components/ui/Icons'
-
-const filterCategories = ['All News', 'Positive Sentiment', 'Negative Sentiment', 'Earnings', 'Macro & Policy', 'Regulatory']
-
-const articles = [
-  {
-    id: 1,
-    title: 'RBI Monetary Policy Committee maintains repo rate at 6.5%, signals accommodative liquidity stance',
-    summary: 'The central bank opted to retain key interest rates while highlighting resilient domestic economic momentum and controlled core inflation trajectory.',
-    source: 'LiveMint',
-    time: '25 mins ago',
-    sector: 'Banking & Macro',
-    sentiment: 'Positive',
-    score: '+0.82',
-    symbols: ['HDFCBANK', 'SBIN', 'ICICIBANK'],
-  },
-  {
-    id: 2,
-    title: 'Tata Motors passenger EV registrations climb 18% YoY in October festive sales surge',
-    summary: 'Strong demand for the Punch.ev and Nexon.ev helped consolidate market share above 65% in domestic passenger electric mobility.',
-    source: 'Economic Times',
-    time: '1 hour ago',
-    sector: 'Automobile',
-    sentiment: 'Positive',
-    score: '+0.76',
-    symbols: ['TATAMOTORS'],
-  },
-  {
-    id: 3,
-    title: 'IT services sector anticipates cautious Q4 client guidance amid deferred discretionary tech spends',
-    summary: 'Tier-1 tech companies report continued delays in large digital transformation deals as BFSI clients optimize existing cloud infrastructure budgets.',
-    source: 'Moneycontrol',
-    time: '2 hours ago',
-    sector: 'Information Tech',
-    sentiment: 'Negative',
-    score: '-0.42',
-    symbols: ['INFY', 'TCS', 'WIPRO'],
-  },
-  {
-    id: 4,
-    title: 'Reliance Retail expands omnichannel distribution footprint with 120 new store additions',
-    summary: 'Rapid scaling in Tier-2 and Tier-3 cities expected to drive higher EBITDA margins and enhance warehouse supply chain fulfillment.',
-    source: 'Business Standard',
-    time: '4 hours ago',
-    sector: 'Retail & Conglomerate',
-    sentiment: 'Positive',
-    score: '+0.69',
-    symbols: ['RELIANCE'],
-  },
-  {
-    id: 5,
-    title: 'Brent crude stabilizes near $74/bbl as OPEC+ confirms delayed unwinding of voluntary production curbs',
-    summary: 'Energy marketers and OMCs face modest margin adjustments following crude price volatility and refining crack spread shifts.',
-    source: 'Reuters Financial',
-    time: '6 hours ago',
-    sector: 'Energy & Commodities',
-    sentiment: 'Neutral',
-    score: '0.04',
-    symbols: ['BPCL', 'IOC', 'ONGC'],
-  },
-]
+import { Search, RefreshCw, Newspaper } from '../components/ui/Icons'
+import { EmptyState } from '../components/common/EmptyState'
+import { ArticleCard } from '../components/news/ArticleCard'
+import { ArticleDetailModal } from '../components/news/ArticleDetailModal'
+import {
+  getNewsArticles,
+  getArticleById,
+  getUniqueSectors,
+  getUniqueSources,
+} from '../services/newsData'
+import type { NewsArticle, SentimentPolarity } from '../types/news'
 
 export function NewsPage() {
-  const [activeFilter, setActiveFilter] = useState('All News')
+  const { id } = useParams<{ id?: string }>()
+  const navigate = useNavigate()
+
+  // State for filters
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedSentiment, setSelectedSentiment] = useState<'All' | SentimentPolarity>('All')
+  const [selectedSector, setSelectedSector] = useState('All Sectors')
+  const [selectedSource, setSelectedSource] = useState('All Publishers')
+  const [sortBy, setSortBy] = useState<'newest' | 'highest-sentiment' | 'lowest-sentiment'>('newest')
+  const [selectedArticleState, setSelectedArticleState] = useState<NewsArticle | null>(null)
 
-  const filteredArticles = articles.filter((art) => {
-    if (activeFilter === 'Positive Sentiment' && art.sentiment !== 'Positive') return false
-    if (activeFilter === 'Negative Sentiment' && art.sentiment !== 'Negative') return false
-    if (activeFilter === 'Earnings' && !art.title.toLowerCase().includes('result') && !art.title.toLowerCase().includes('q')) return false
-    if (activeFilter === 'Macro & Policy' && art.sector !== 'Banking & Macro') return false
+  const sectors = useMemo(() => ['All Sectors', ...getUniqueSectors()], [])
+  const sources = useMemo(() => ['All Publishers', ...getUniqueSources()], [])
 
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      return (
-        art.title.toLowerCase().includes(q) ||
-        art.summary.toLowerCase().includes(q) ||
-        art.symbols.some((s) => s.toLowerCase().includes(q))
-      )
+  // Filtered articles list
+  const filteredArticles = useMemo(() => {
+    return getNewsArticles({
+      searchQuery,
+      sentiment: selectedSentiment,
+      sector: selectedSector,
+      source: selectedSource,
+      sortBy,
+    })
+  }, [searchQuery, selectedSentiment, selectedSector, selectedSource, sortBy])
+
+  // Active article: either from URL params (e.g. /news/:id) or state
+  const activeArticle = useMemo(() => {
+    if (id) {
+      return getArticleById(id) || null
     }
-    return true
-  })
+    return selectedArticleState
+  }, [id, selectedArticleState])
+
+  const handleOpenArticle = (article: NewsArticle) => {
+    setSelectedArticleState(article)
+    navigate(`/news/${article.id}`, { replace: false })
+  }
+
+  const handleCloseArticle = () => {
+    setSelectedArticleState(null)
+    navigate('/news', { replace: false })
+  }
+
+  const handleResetFilters = () => {
+    setSearchQuery('')
+    setSelectedSentiment('All')
+    setSelectedSector('All Sectors')
+    setSelectedSource('All Publishers')
+    setSortBy('newest')
+  }
+
+  // Count summaries
+  const positiveCount = filteredArticles.filter((a) => a.sentiment === 'Positive').length
+  const negativeCount = filteredArticles.filter((a) => a.sentiment === 'Negative').length
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-800">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            News Intelligence Feed
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+              News Intelligence Stream
+            </h1>
+            <Badge variant="purple" size="sm">
+              Phase 4 • Live Feed
+            </Badge>
+          </div>
           <p className="text-xs sm:text-sm text-slate-400">
-            Real-time multi-publisher RSS ingestion tagged with FinBERT sentiment scores and ticker citations.
+            Real-time RSS ingestion from 5+ major financial publishers with FinBERT sentiment scoring.
           </p>
         </div>
 
-        <Button variant="secondary" size="sm" leftIcon={<RefreshCw size={14} />}>
-          Refresh Feed
-        </Button>
+        <div className="flex items-center gap-2">
+          <Badge variant="success" size="sm">
+            {positiveCount} Bullish
+          </Badge>
+          <Badge variant="danger" size="sm">
+            {negativeCount} Bearish
+          </Badge>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleResetFilters}
+            leftIcon={<RefreshCw size={13} />}
+          >
+            Reset
+          </Button>
+        </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-          {filterCategories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setActiveFilter(cat)}
-              className={`whitespace-nowrap px-3 py-1.5 rounded-full border transition cursor-pointer ${
-                activeFilter === cat
-                  ? 'bg-indigo-600 border-indigo-500 text-white font-semibold'
-                  : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
-              }`}
+      {/* Filter Toolbar */}
+      <div className="space-y-3 p-4 rounded-xl border border-slate-800 bg-slate-900/60 backdrop-blur-sm">
+        {/* Search & Sort Row */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search news by headline, summary, sector, or symbol (e.g. HDFC, EV, RBI)..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-400 whitespace-nowrap">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'newest' | 'highest-sentiment' | 'lowest-sentiment')}
+              aria-label="Sort news articles"
+              className="px-3 py-1.5 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer"
             >
-              {cat}
-            </button>
+              <option value="newest">Newest First</option>
+              <option value="highest-sentiment">Highest Sentiment</option>
+              <option value="lowest-sentiment">Lowest Sentiment</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Sentiment, Sector & Source Dropdowns / Pills */}
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-800/80 text-xs">
+          {/* Sentiment Filter Pills */}
+          <div className="flex items-center gap-1.5">
+            {(['All', 'Positive', 'Neutral', 'Negative'] as const).map((sent) => (
+              <button
+                key={sent}
+                type="button"
+                onClick={() => setSelectedSentiment(sent)}
+                className={`px-2.5 py-1 rounded-full border transition cursor-pointer ${
+                  selectedSentiment === sent
+                    ? 'bg-indigo-600 border-indigo-500 text-white font-semibold'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+              >
+                {sent}
+              </button>
+            ))}
+          </div>
+
+          <div className="h-4 w-px bg-slate-800 mx-1 hidden sm:block" />
+
+          {/* Sector Select */}
+          <select
+            value={selectedSector}
+            onChange={(e) => setSelectedSector(e.target.value)}
+            aria-label="Filter by industry sector"
+            className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-xs focus:outline-none cursor-pointer"
+          >
+            {sectors.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+
+          {/* Source Select */}
+          <select
+            value={selectedSource}
+            onChange={(e) => setSelectedSource(e.target.value)}
+            aria-label="Filter by news publisher"
+            className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-slate-300 text-xs focus:outline-none cursor-pointer"
+          >
+            {sources.map((src) => (
+              <option key={src} value={src}>
+                {src}
+              </option>
+            ))}
+          </select>
+
+          <span className="ml-auto text-slate-500 text-[11px] font-mono">
+            Showing {filteredArticles.length} articles
+          </span>
+        </div>
+      </div>
+
+      {/* Feed List */}
+      {filteredArticles.length > 0 ? (
+        <div className="space-y-3.5">
+          {filteredArticles.map((article) => (
+            <ArticleCard
+              key={article.id}
+              article={article}
+              onSelectArticle={handleOpenArticle}
+            />
           ))}
         </div>
+      ) : (
+        <EmptyState
+          icon={<Newspaper size={28} />}
+          title="No articles match your filter criteria"
+          description="Try clearing your search query or broadening the sector and sentiment filters."
+          action={
+            <Button variant="secondary" size="sm" onClick={handleResetFilters}>
+              Reset All Filters
+            </Button>
+          }
+        />
+      )}
 
-        {/* Search */}
-        <div className="relative min-w-[240px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search news or symbol..."
-            className="w-full pl-8 pr-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-        </div>
-      </div>
-
-      {/* Articles Feed */}
-      <div className="space-y-4">
-        {filteredArticles.map((article) => (
-          <Card key={article.id} className="hover:border-slate-700 transition">
-            <CardContent className="p-5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-slate-300">{article.source}</span>
-                  <span className="text-slate-600">•</span>
-                  <span className="text-slate-400">{article.time}</span>
-                  <span className="text-slate-600">•</span>
-                  <Badge variant="default" size="sm">
-                    {article.sector}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant={
-                      article.sentiment === 'Positive'
-                        ? 'success'
-                        : article.sentiment === 'Negative'
-                        ? 'danger'
-                        : 'default'
-                    }
-                    size="sm"
-                  >
-                    FinBERT: {article.score}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <h3 className="text-base font-bold text-white hover:text-indigo-300 transition cursor-pointer flex items-start justify-between gap-4">
-                  <span>{article.title}</span>
-                  <ExternalLink size={16} className="text-slate-500 flex-shrink-0 mt-1" />
-                </h3>
-                <p className="text-sm text-slate-400 leading-relaxed">
-                  {article.summary}
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between border-t border-slate-800/80 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400">Related Symbols:</span>
-                  {article.symbols.map((sym) => (
-                    <span
-                      key={sym}
-                      className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[11px] font-semibold"
-                    >
-                      {sym}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  className="text-indigo-400 hover:text-indigo-300 font-medium"
-                >
-                  Analyze with AI →
-                </button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Article Detail Modal / Reader */}
+      <ArticleDetailModal
+        article={activeArticle}
+        onClose={handleCloseArticle}
+      />
     </div>
   )
 }
-

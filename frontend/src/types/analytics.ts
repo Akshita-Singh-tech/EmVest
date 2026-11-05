@@ -33,3 +33,4 @@ export interface PolarityData {
   value: number
   color: string
 }
+

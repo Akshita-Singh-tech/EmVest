@@ -126,7 +126,7 @@ emvest/
 - [x] **Phase 1: Project Foundation** (Backend scaffolding, Conda 3.11 env, FastAPI health API, Vite + React 19 + Tailwind v4 frontend, verification)
 - [x] **Phase 2: UI Shell** (Responsive layout, sidebar, navbar, 7 routed pages, shared UI primitives: Card, Badge, EmptyState, Button)
 - [x] **Phase 3: Analytics UI** (Recharts, sentiment trajectory area charts, sector ranking bar charts, polarity donuts, company deep-dives, explicit no-data states)
-- [ ] **Phase 4: News Intelligence UI** (Live feed, article cards, filters, detail view)
+- [x] **Phase 4: News Intelligence UI** (Live multi-publisher feed, article cards, multi-criteria filters, detail view with FinBERT takeaways & market impact)
 - [ ] **Phase 5: Personalization UI** (Profile, watchlists, sector selection, preferences)
 - [ ] **Phase 6: Backend & DB** (PostgreSQL, SQLAlchemy, Alembic, auth, preferences API)
 - [ ] **Phase 7: Data Pipeline** (RSS/scrapers, FinBERT sentiment worker, analytics endpoints)

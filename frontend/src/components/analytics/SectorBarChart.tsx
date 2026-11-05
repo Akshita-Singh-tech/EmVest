@@ -136,3 +136,4 @@ export function SectorBarChart({ data }: SectorBarChartProps) {
     </div>
   )
 }
+

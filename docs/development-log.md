@@ -53,9 +53,25 @@
 
 ---
 
-## Next Phase: Phase 4 (News Intelligence UI)
+## Phase 4: News Intelligence UI (Completed)
 
-- Structured typed news models with full article payloads.
-- Filterable news stream by category, sentiment polarity, and stock ticker.
-- Article cards with source provenance, FinBERT score chips, and external link triggers.
-- Dedicated modal/drawer detail view for in-depth article reading and agentic breakdown.
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Typed News Architecture** | Implemented `NewsArticle` model with full article body, sector, source, confidence, takeaways, and market impact | Verified |
+| **Live News Feed** | Filterable stream with search bar, sentiment filters, sector dropdown, publisher filter, and sort options | Verified |
+| **Article Card** | Publisher badge, FinBERT score chip with confidence percentage, tagged tickers, and quick actions | Verified |
+| **Article Detail Reader** | Modal / Drawer reading experience featuring full multi-paragraph content, strategic takeaways, and FinBERT impact analysis | Verified |
+| **Route Support** | Implemented both `/news` and deep-linked `/news/:id` routes in React Router | Verified |
+| **Filter & Route Verification** | Exit check satisfied: Routes and filters operate against typed placeholder structures with active empty states | Verified |
+| **Code Quality Checks** | `npm run lint` clean (0 errors, 0 warnings); `npm run build` compiled cleanly into production bundle | Verified |
+
+---
+
+## Next Phase: Phase 5 (Personalization UI)
+
+- Structured investor profile state with risk tolerance strategies.
+- Company and sector multi-select master list with official NSE/BSE symbols.
+- Watchlist management with client-side state ready for Phase 6 backend persistence.
+- Validated preference forms with interactive feedback.
