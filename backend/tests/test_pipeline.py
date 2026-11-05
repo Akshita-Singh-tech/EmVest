@@ -126,3 +126,4 @@ def test_analytics_endpoints_from_real_data():
     assert company_data["symbol"] == "HDFCBANK"
     assert company_data["article_count"] >= 1
     assert "catalysts" in company_data
+

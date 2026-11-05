@@ -61,3 +61,4 @@ def get_article(article_id: int, db: Session = Depends(get_db)):
 def trigger_ingestion(db: Session = Depends(get_db)):
     result = run_ingestion_pipeline(db, force_seed=True)
     return IngestionResponse(**result)
+

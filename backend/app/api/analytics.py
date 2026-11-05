@@ -131,3 +131,4 @@ def get_company_analytics(symbol: str, db: Session = Depends(get_db)):
         catalysts=catalysts[:3],
         recent_articles=recent_list,
     )
+

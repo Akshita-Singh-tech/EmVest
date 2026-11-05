@@ -27,3 +27,4 @@ class IngestionResponse(BaseModel):
     status: str
     newly_ingested: int
     total_articles: int
+

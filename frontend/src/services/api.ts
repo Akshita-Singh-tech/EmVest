@@ -132,6 +132,15 @@ export interface BackendChatHistory {
   messages: BackendChatMessageRecord[]
 }
 
+export interface BackendChatSessionSummary {
+  id: string
+  title: string
+  created_at: string
+  updated_at: string
+  message_count: number
+  last_message_preview?: string | null
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 export function getAuthToken(): string | null {
@@ -319,4 +328,36 @@ export async function apiClearChatHistory(sessionId: string): Promise<{ status: 
     throw new Error(`Failed to clear chat history: ${response.status}`)
   }
   return response.json()
+}
+
+export async function apiGetChatSessions(): Promise<BackendChatSessionSummary[]> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE_URL}/chat/sessions`, { headers })
+  if (!response.ok) {
+    throw new Error(`Failed to fetch chat sessions: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiCreateChatSession(title: string = 'New Conversation'): Promise<BackendChatSessionSummary> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const response = await fetch(`${API_BASE_URL}/chat/sessions`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ title }),
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to create chat session: ${response.status}`)
+  }
+  return response.json()
+}
+
+export async function apiDeleteChatSession(sessionId: string): Promise<{ status: string; session_id: string }> {
+  return apiClearChatHistory(sessionId)
 }

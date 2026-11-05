@@ -28,3 +28,4 @@ class Article(Base):
     market_impact = Column(Text, nullable=True)
 
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+

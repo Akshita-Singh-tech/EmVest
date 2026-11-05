@@ -82,3 +82,4 @@ class FinBertSentimentWorker:
 
 
 finbert_worker = FinBertSentimentWorker()
+

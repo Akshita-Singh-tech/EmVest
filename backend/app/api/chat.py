@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Optional
+import uuid
+from datetime import datetime
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.models.chat import ChatMessage
+from app.models.chat import ChatMessage, ChatSession
 from app.models.user import User
 from app.api.auth import get_current_user
 from app.chatbot.agent import ChatAgent
@@ -15,9 +17,81 @@ from app.schemas.chat import (
     ChatHistoryResponse,
     ChatMessageRecord,
     CitationItem,
+    ChatSessionSummary,
+    ChatSessionCreate,
 )
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+@router.get("/sessions", response_model=List[ChatSessionSummary])
+def list_chat_sessions(
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(lambda: None),
+) -> List[ChatSessionSummary]:
+    """List all saved chat threads with preview and message counts (ChatGPT-style)."""
+    query = db.query(ChatSession)
+    if current_user:
+        query = query.filter((ChatSession.user_id == current_user.id) | (ChatSession.user_id.is_(None)))
+    sessions = query.order_by(ChatSession.updated_at.desc()).all()
+
+    result: List[ChatSessionSummary] = []
+    for s in sessions:
+        count = db.query(ChatMessage).filter(ChatMessage.session_id == s.id).count()
+        last_msg = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == s.id)
+            .order_by(ChatMessage.created_at.desc())
+            .first()
+        )
+        preview = None
+        if last_msg:
+            text = last_msg.content.replace("#", "").strip()
+            preview = text[:80] + "..." if len(text) > 80 else text
+
+        result.append(
+            ChatSessionSummary(
+                id=s.id,
+                title=s.title,
+                created_at=s.created_at,
+                updated_at=s.updated_at,
+                message_count=count,
+                last_message_preview=preview,
+            )
+        )
+    return result
+
+
+@router.post("/sessions", response_model=ChatSessionSummary, status_code=status.HTTP_201_CREATED)
+def create_chat_session(
+    body: Optional[ChatSessionCreate] = None,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(lambda: None),
+) -> ChatSessionSummary:
+    """Create a new chat conversation session."""
+    session_id = f"sess-{uuid.uuid4().hex[:12]}"
+    title = body.title if (body and body.title) else "New Conversation"
+    user_id = current_user.id if current_user else None
+
+    sess = ChatSession(
+        id=session_id,
+        title=title,
+        user_id=user_id,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
+    db.add(sess)
+    db.commit()
+    db.refresh(sess)
+
+    return ChatSessionSummary(
+        id=sess.id,
+        title=sess.title,
+        created_at=sess.created_at,
+        updated_at=sess.updated_at,
+        message_count=0,
+        last_message_preview=None,
+    )
 
 
 @router.post("/query", response_model=ChatQueryResponse)
@@ -26,21 +100,18 @@ def query_chat(
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(lambda: None),
 ) -> ChatQueryResponse:
-    """Submit a market research or stock query to the AI Assistant.
-
-    Retrieves matching articles from the database, runs FinBERT analysis,
-    synthesizes a response with verifiable citations, and persists the conversation.
-    """
+    """Submit a query to the AI Assistant with multi-turn memory and source citations."""
     user_id = current_user.id if current_user else None
     return ChatAgent.process_query(db=db, request=request, user_id=user_id)
 
 
 @router.get("/history/{session_id}", response_model=ChatHistoryResponse)
+@router.get("/sessions/{session_id}", response_model=ChatHistoryResponse)
 def get_chat_history(
     session_id: str,
     db: Session = Depends(get_db),
 ) -> ChatHistoryResponse:
-    """Retrieve all messages and source citations for an existing chat session."""
+    """Retrieve full conversation history and verifiable citations for a chat session."""
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)
@@ -69,11 +140,13 @@ def get_chat_history(
 
 
 @router.delete("/history/{session_id}")
+@router.delete("/sessions/{session_id}")
 def clear_chat_history(
     session_id: str,
     db: Session = Depends(get_db),
 ) -> dict:
-    """Clear conversation history for a given session."""
+    """Delete a conversation thread and its messages."""
     db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
+    db.query(ChatSession).filter(ChatSession.id == session_id).delete()
     db.commit()
     return {"status": "cleared", "session_id": session_id}

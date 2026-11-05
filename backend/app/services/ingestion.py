@@ -149,3 +149,4 @@ def run_ingestion_pipeline(db: Session, force_seed: bool = True) -> Dict[str, An
         "newly_ingested": ingested_count,
         "total_articles": total_articles,
     }
+

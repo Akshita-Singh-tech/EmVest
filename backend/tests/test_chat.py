@@ -96,3 +96,47 @@ def test_chat_history_persistence_and_clear():
     h_empty = client.get(f"/api/v1/chat/history/{test_session}")
     assert h_empty.status_code == 200
     assert len(h_empty.json()["messages"]) == 0
+
+
+def test_chat_conversational_memory_across_turns():
+    """Verify ChatGPT-style conversational memory: pronouns in Turn 2 resolve to Turn 1 entities."""
+    session_id = f"mem-test-{uuid.uuid4().hex[:8]}"
+
+    # Turn 1: Explicit mention of Tata Motors
+    r1 = client.post(
+        "/api/v1/chat/query",
+        json={
+            "query": "What is the latest outlook on Tata Motors?",
+            "session_id": session_id,
+        },
+    )
+    assert r1.status_code == 200
+    d1 = r1.json()
+    assert len(d1["citations"]) > 0
+
+    # Turn 2: Follow-up question using pronoun ("its"), no company name specified
+    r2 = client.post(
+        "/api/v1/chat/query",
+        json={
+            "query": "How are its EV sales numbers and market margins holding up?",
+            "session_id": session_id,
+        },
+    )
+    assert r2.status_code == 200
+    d2 = r2.json()
+
+    # The agent should remember that "its" refers to Tata Motors
+    assert "TATAMOTORS" in d2["answer"] or any(
+        "tata" in c["title"].lower() or "auto" in (c.get("sector") or "").lower()
+        for c in d2["citations"]
+    )
+
+    # Verify session summary listing
+    sess_res = client.get("/api/v1/chat/sessions")
+    assert sess_res.status_code == 200
+    sessions = sess_res.json()
+    matching = [s for s in sessions if s["id"] == session_id]
+    assert len(matching) == 1
+    assert matching[0]["message_count"] == 4  # 2 user msgs + 2 assistant msgs
+    assert "tata motors" in matching[0]["title"].lower() or "outlook" in matching[0]["title"].lower()
+

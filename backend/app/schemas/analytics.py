@@ -38,3 +38,4 @@ class CompanyAnalyticsResponse(BaseModel):
     article_count: int
     catalysts: List[str]
     recent_articles: List[Dict[str, Any]]
+

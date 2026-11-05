@@ -3,6 +3,6 @@ from app.models.user import User
 from app.models.preferences import UserPreferences
 from app.models.watchlist import WatchlistItem
 from app.models.article import Article
-from app.models.chat import ChatMessage
+from app.models.chat import ChatMessage, ChatSession
 
-__all__ = ["Base", "User", "UserPreferences", "WatchlistItem", "Article", "ChatMessage"]
+__all__ = ["Base", "User", "UserPreferences", "WatchlistItem", "Article", "ChatMessage", "ChatSession"]

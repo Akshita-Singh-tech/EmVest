@@ -57,3 +57,19 @@ class ChatMessageRecord(BaseModel):
 class ChatHistoryResponse(BaseModel):
     session_id: str
     messages: List[ChatMessageRecord]
+
+
+class ChatSessionSummary(BaseModel):
+    id: str
+    title: str
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+    last_message_preview: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChatSessionCreate(BaseModel):
+    title: Optional[str] = "New Conversation"
+

@@ -9,7 +9,7 @@ from sqlalchemy import or_, desc
 
 from app.core.config import settings
 from app.models.article import Article
-from app.models.chat import ChatMessage
+from app.models.chat import ChatMessage, ChatSession
 from app.schemas.chat import (
     CitationItem,
     ChatQueryRequest,
@@ -193,6 +193,21 @@ class ChatAgent:
             )
         return citations
 
+    @staticmethod
+    def generate_session_title(query: str) -> str:
+        """Auto-generate a concise ChatGPT-style conversation thread title from first query."""
+        cleaned = re.sub(
+            r"^(what is the|what is|tell me about the|tell me about|how is the|how is|give me a summary of|what are the|what are|can you explain|analyze)\s+",
+            "",
+            query,
+            flags=re.IGNORECASE,
+        ).strip()
+        cleaned = re.sub(r"[?!.]+$", "", cleaned)
+        cleaned = cleaned.capitalize()
+        if len(cleaned) > 36:
+            return cleaned[:33] + "..."
+        return cleaned or "Financial Research Thread"
+
     @classmethod
     def generate_deterministic_response(
         cls,
@@ -201,6 +216,7 @@ class ChatAgent:
         summary: Optional[SentimentSummary],
         symbols: List[str],
         sectors: List[str],
+        prior_context_symbols: Optional[List[str]] = None,
     ) -> str:
         """Synthesize a structured financial intelligence report strictly citing stored articles."""
         if not articles:
@@ -214,6 +230,12 @@ class ChatAgent:
         sector_header = f" across **{', '.join(sectors)}**" if sectors and not symbols else ""
 
         lines: List[str] = []
+
+        # Conversational Memory Callout (if answering based on memory from earlier in the chat)
+        if prior_context_symbols and not (cls.extract_entities(query)[0]):
+            lines.append(
+                f"> **Conversational Context:** Remembering our earlier discussion on **{', '.join(prior_context_symbols)}**.\n"
+            )
 
         # Section 1: Overview
         if summary:
@@ -295,38 +317,73 @@ class ChatAgent:
         request: ChatQueryRequest,
         user_id: Optional[int] = None,
     ) -> ChatQueryResponse:
-        """Main agent entrypoint: handles retrieval, synthesis, citation generation, and message logging."""
+        """Main agent entrypoint with ChatGPT-style conversation memory and session tracking."""
         session_id = request.session_id or str(uuid.uuid4())
 
-        # 1. Retrieve articles from DB
-        articles = cls.retrieve_articles(db, request.query, request.symbols)
+        # 1. Ensure ChatSession exists or auto-create it
+        session_record = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+        if not session_record:
+            title = cls.generate_session_title(request.query)
+            session_record = ChatSession(
+                id=session_id,
+                title=title,
+                user_id=user_id,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+            db.add(session_record)
+            db.commit()
 
-        # 2. Extract entities for synthesis & followups
+        # 2. Conversational Memory: Retrieve prior conversation messages
+        prior_messages = (
+            db.query(ChatMessage)
+            .filter(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc())
+            .all()
+        )
+
+        # 3. Extract entities from current query
         symbols, sectors, _ = cls.extract_entities(request.query)
         if request.symbols:
             symbols = list(set(symbols + request.symbols))
 
-        # 3. Calculate FinBERT sentiment summary
+        # 4. Multi-turn pronoun/context resolution from prior turns (ChatGPT-style memory)
+        prior_context_symbols: List[str] = []
+        if not symbols and prior_messages:
+            # Check last 4 messages in thread for active symbols
+            for pm in reversed(prior_messages[-4:]):
+                prev_syms, prev_secs, _ = cls.extract_entities(pm.content)
+                if prev_syms:
+                    prior_context_symbols.extend(prev_syms)
+                if prev_secs and not sectors:
+                    sectors.extend(prev_secs)
+            prior_context_symbols = list(dict.fromkeys(prior_context_symbols))
+            if prior_context_symbols:
+                symbols = prior_context_symbols[:2]
+
+        # 5. Retrieve articles from DB (matching current and carried entities)
+        articles = cls.retrieve_articles(db, request.query, symbols)
+
+        # 6. Calculate FinBERT sentiment summary
         sentiment_summary = cls.calculate_sentiment_summary(articles)
 
-        # 4. Generate structured citations
+        # 7. Generate structured citations
         citations = cls.build_citations(articles)
 
-        # 5. Synthesize answer
-        # If external LLM key is configured, external generation could be plugged in;
-        # otherwise our comprehensive grounded deterministic research synthesizer is used.
+        # 8. Synthesize answer with conversational context
         answer = cls.generate_deterministic_response(
             query=request.query,
             articles=articles,
             summary=sentiment_summary,
             symbols=symbols,
             sectors=sectors,
+            prior_context_symbols=prior_context_symbols if prior_context_symbols else None,
         )
 
-        # 6. Generate followups
+        # 9. Generate context-aware followups
         suggested_followups = cls.generate_followup_prompts(symbols, sectors, articles)
 
-        # 7. Persist user message and assistant response to chat_messages table
+        # 10. Persist user message and assistant response
         citations_dict_list = [c.model_dump() for c in citations]
 
         user_msg = ChatMessage(
@@ -348,6 +405,9 @@ class ChatAgent:
 
         db.add(user_msg)
         db.add(assistant_msg)
+
+        # Update session timestamp
+        session_record.updated_at = datetime.utcnow()
         db.commit()
 
         return ChatQueryResponse(
@@ -358,3 +418,4 @@ class ChatAgent:
             suggested_followups=suggested_followups,
             sentiment_summary=sentiment_summary,
         )
+
