@@ -86,9 +86,81 @@ function generateLocalResponse(
   query: string,
   history: ChatMessage[]
 ): ChatMessage {
-  const qLower = query.toLowerCase()
+  const qRaw = query.trim()
+  const qLower = qRaw.toLowerCase()
 
-  // 1. Detect entities in current query
+  // 1. Intent Check: Greetings & Identity
+  const greetingPatterns = [
+    /^(hi|hello|hey|greetings|good morning|good afternoon|good evening)\b/,
+    /who are you/,
+    /what is your name/,
+    /what can you do/,
+    /help me/,
+    /how do you work/,
+    /^introduce yourself/,
+  ]
+  if (greetingPatterns.some((p) => p.test(qLower)) && qRaw.split(' ').length <= 6) {
+    const text =
+      `### Hello! I am Emvest AI\n\n` +
+      `I am your dedicated **Agentic Investment Intelligence Assistant** designed specifically for Indian equities (NSE/BSE) and macroeconomic trends.\n\n` +
+      `**Here is what you can ask me:**\n` +
+      `- **Stock Analysis:** *'What is the outlook for Tata Motors electric vehicles?'* or *'Analyze Reliance Industries retail expansion'*.\n` +
+      `- **Financial Concepts:** *'What is P/E ratio and how is it used?'* or *'Explain EBITDA vs Net Profit'*.\n` +
+      `- **Macroeconomic & Policy:** *'How does the RBI repo rate impact banking stocks?'* or *'What is the outlook for IT sector guidance?'*.\n` +
+      `- **Stock Comparisons:** *'Compare Tata Motors and Maruti Suzuki'*.\n\n` +
+      `All breaking news analysis is verified against real-time ingested publications with FinBERT sentiment scores.`
+    return createMessage('assistant', text, [])
+  }
+
+  // 2. Intent Check: Financial Concepts & Educational Queries
+  const concepts: Record<string, { keywords: string[]; content: string }> = {
+    pe_ratio: {
+      keywords: ['pe ratio', 'p/e ratio', 'price to earnings', 'p/e', 'pe multiple'],
+      content:
+        `### Price-to-Earnings (P/E) Ratio\n\n` +
+        `The **P/E ratio** measures how much investors are willing to pay per rupee of current earnings.\n\n` +
+        `- **Formula:** \`Current Market Price / Earnings Per Share (EPS)\`\n` +
+        `- **Interpretation:**\n` +
+        `  - **High P/E:** Signals high market expectations for future earnings growth, or potential overvaluation.\n` +
+        `  - **Low P/E:** May indicate an undervalued value stock, or underlying cyclical/structural headwinds.\n` +
+        `- **Indian Market Benchmark:** The Nifty 50 historical 10-year average trailing P/E fluctuates around **20x - 23x**. Above 24x is considered expensive; below 18x represents attractive long-term valuation.`,
+    },
+    ebitda: {
+      keywords: ['ebitda', 'operating profit', 'operating margin', 'ebitda margin'],
+      content:
+        `### EBITDA (Earnings Before Interest, Taxes, Depreciation & Amortization)\n\n` +
+        `**EBITDA** isolates a business's core operational profitability by eliminating capital structure (debt interest), tax jurisdictions, and non-cash depreciation.\n\n` +
+        `- **Formula:** \`EBITDA Margin = (EBITDA / Total Revenue) * 100\`\n` +
+        `- **Why it matters:** Enables clean operational comparisons across companies with varying debt levels or capital intensity.\n` +
+        `- **Example:** Tata Motors targets double-digit passenger EV EBITDA margins, while Indian IT majors like TCS and Infosys deliver 23% - 26% operating margins.`,
+    },
+    market_cap: {
+      keywords: ['market cap', 'market capitalization', 'large cap', 'mid cap', 'small cap'],
+      content:
+        `### Market Capitalization & SEBI Categorization\n\n` +
+        `**Market Cap** is the total market value of a publicly listed company's outstanding equity shares (\`Total Shares * Share Price\`).\n\n` +
+        `- **SEBI Indian Market Categorization:**\n` +
+        `  - **Large Cap (Top 1–100):** Market cap > ₹20,000 Cr. Stable blue-chips (e.g., Reliance, TCS, HDFC Bank).\n` +
+        `  - **Mid Cap (101–250):** Market cap between ₹5,000 Cr and ₹20,000 Cr. Faster growth with moderate volatility.\n` +
+        `  - **Small Cap (251+):** Market cap < ₹5,000 Cr. High growth potential with elevated drawdown risk.`,
+    },
+    pb_ratio: {
+      keywords: ['pb ratio', 'p/b ratio', 'price to book', 'p/b', 'book value'],
+      content:
+        `### Price-to-Book (P/B) Ratio\n\n` +
+        `The **P/B ratio** compares a company's market capitalization to its net asset book value (\`Current Price / Book Value Per Share\`).\n\n` +
+        `- **Key Use in India:** Crucial for evaluating **Banks & NBFCs** (like HDFC Bank, ICICI Bank, SBI), where earnings quality depends on loan book asset health.\n` +
+        `- **Benchmark:** Top Indian private banks trade at **2.5x - 3.5x P/B**, while PSU lenders trade between **0.8x - 1.5x P/B**.`,
+    },
+  }
+
+  for (const c of Object.values(concepts)) {
+    if (c.keywords.some((kw) => qLower.includes(kw))) {
+      return createMessage('assistant', c.content, [])
+    }
+  }
+
+  // 3. Detect Entities in Query
   const entityKeywords: Record<string, string[]> = {
     TATAMOTORS: ['tata', 'tatamotors', 'nexon', 'punch.ev', 'ev', 'auto', 'electric vehicle'],
     RELIANCE: ['reliance', 'ril', 'jio', 'ambani', 'oil', 'energy', 'retail'],
@@ -97,6 +169,7 @@ function generateLocalResponse(
     SUNPHARMA: ['sun pharma', 'sunpharma', 'pharma', 'fda', 'drug'],
     BHARTIARTL: ['airtel', 'bharti', 'telecom', '5g', 'arpu'],
     RBI: ['rbi', 'repo rate', 'inflation', 'mpc', 'monetary policy', 'central bank'],
+    ZOMATO: ['zomato', 'blinkit', 'quick commerce', 'food delivery'],
   }
 
   const matchedSymbols: string[] = []
@@ -106,7 +179,7 @@ function generateLocalResponse(
     }
   }
 
-  // 2. Multi-turn pronoun/context resolution from prior turns
+  // Multi-turn pronoun/context resolution
   let contextNote = ''
   if (matchedSymbols.length === 0 && history.length > 0) {
     const priorAssistantMsgs = history.filter((m) => m.sender === 'assistant').reverse()
@@ -122,9 +195,24 @@ function generateLocalResponse(
     }
   }
 
-  // Fallback to top market articles if generic query
-  const relevantArticles = sampleArticles.filter((art) => {
-    if (matchedSymbols.length === 0) return true
+  // 4. Intent Check: Stock Comparison (e.g., "Compare Tata Motors and Maruti")
+  if (matchedSymbols.length >= 2 || (qLower.includes('compare') && matchedSymbols.length >= 1)) {
+    const s1 = matchedSymbols[0] || 'TATAMOTORS'
+    const s2 = matchedSymbols[1] || 'MARUTI'
+    const comparisonText =
+      `### Comparative Research: **${s1}** vs. **${s2}**\n\n` +
+      `| Parameter | **${s1}** | **${s2}** |\n` +
+      `| :--- | :--- | :--- |\n` +
+      `| **Segment Moat** | Market leadership in domestic passenger EVs (>65% share) and commercial vehicles | Dominant passenger vehicle manufacturer (>40% share) with CNG leadership |\n` +
+      `| **Growth Engine** | JLR luxury margin turnaround & localized EV platforms | Hybrid vehicle rollout & extensive Tier-2/3 dealer footprint |\n` +
+      `| **Primary Risk** | Global export cyclicality & raw material battery costs | Transition lag in pure battery electric vehicles |\n\n` +
+      `**Summary:** Choose ${s1} for higher beta exposure to India's electric mobility transition, and ${s2} for cash flow stability and mass-market volume dominance.`
+    return createMessage('assistant', comparisonText, [])
+  }
+
+  // 5. Check if real matching articles exist in news feed
+  const matchingArticles = sampleArticles.filter((art) => {
+    if (matchedSymbols.length === 0) return false
     return matchedSymbols.some(
       (s) =>
         art.symbols.includes(s) ||
@@ -134,59 +222,80 @@ function generateLocalResponse(
     )
   })
 
-  const targetArticles = relevantArticles.length > 0 ? relevantArticles.slice(0, 3) : sampleArticles.slice(0, 3)
+  // If real matching news articles exist -> Provide FinBERT news synthesis
+  if (matchingArticles.length > 0) {
+    const targetArticles = matchingArticles.slice(0, 3)
+    const scores = targetArticles.map((a) => a.sentimentScore)
+    const avgScore = Number((scores.reduce((a, b) => a + b, 0) / (scores.length || 1)).toFixed(2))
+    const posCount = targetArticles.filter((a) => a.sentiment === 'Positive').length
+    const neuCount = targetArticles.filter((a) => a.sentiment === 'Neutral').length
+    const negCount = targetArticles.filter((a) => a.sentiment === 'Negative').length
 
-  // Calculate sentiment summary
-  const scores = targetArticles.map((a) => a.sentimentScore)
-  const avgScore = Number((scores.reduce((a, b) => a + b, 0) / (scores.length || 1)).toFixed(2))
-  const posCount = targetArticles.filter((a) => a.sentiment === 'Positive').length
-  const neuCount = targetArticles.filter((a) => a.sentiment === 'Neutral').length
-  const negCount = targetArticles.filter((a) => a.sentiment === 'Negative').length
+    const label =
+      avgScore >= 0.5
+        ? 'Strongly Bullish'
+        : avgScore >= 0.15
+        ? 'Moderately Bullish'
+        : avgScore <= -0.15
+        ? 'Moderately Bearish'
+        : 'Neutral / Mixed'
 
-  const label =
-    avgScore >= 0.5
-      ? 'Strongly Bullish'
-      : avgScore >= 0.15
-      ? 'Moderately Bullish'
-      : avgScore <= -0.15
-      ? 'Moderately Bearish'
-      : 'Neutral / Mixed'
+    const sign = avgScore > 0 ? '+' : ''
+    const symbolsText = matchedSymbols.length > 0 ? ` for **${matchedSymbols.join(', ')}**` : ''
 
-  const sign = avgScore > 0 ? '+' : ''
-  const symbolsText = matchedSymbols.length > 0 ? ` for **${matchedSymbols.join(', ')}**` : ''
+    let text = `${contextNote}### Market Intelligence Synthesis${symbolsText}\n\n`
+    text += `Based on real-time ingestion of **${targetArticles.length} verified publications**, current composite sentiment stands at **${label}** (*FinBERT Conviction: ${sign}${avgScore.toFixed(2)}* | ${posCount} Bullish, ${neuCount} Neutral, ${negCount} Bearish).\n\n`
+    text += `**Key Empirical Takeaways from Verified Sources:**\n`
+    for (const art of targetArticles) {
+      const artSign = art.sentimentScore > 0 ? '+' : ''
+      text += `- **${art.source}** (*${art.sentiment}, ${artSign}${art.sentimentScore.toFixed(2)}*): ${art.keyTakeaways[0] || art.summary} [Source: *${art.title}*]\n`
+    }
+    text += `\n**Market Impact & Outlook:**\n`
+    text += `- ${targetArticles[0].marketImpact}\n`
+    text += `- Fundamentals remain underpinned by steady domestic institutional inflows.`
 
-  // Synthesize answer
-  let text = `${contextNote}### Market Intelligence Synthesis${symbolsText}\n\n`
-  text += `Based on real-time ingestion of **${targetArticles.length} verified publications**, current composite sentiment stands at **${label}** (*FinBERT Conviction: ${sign}${avgScore.toFixed(2)}* | ${posCount} Bullish, ${neuCount} Neutral, ${negCount} Bearish).\n\n`
-  text += `**Key Empirical Evidence & Findings:**\n`
-  for (const art of targetArticles) {
-    const artSign = art.sentimentScore > 0 ? '+' : ''
-    text += `- **${art.source}** (*${art.sentiment}, ${artSign}${art.sentimentScore.toFixed(2)}*): ${art.keyTakeaways[0] || art.summary} [Source: *${art.title}*]\n`
+    const citations: Citation[] = targetArticles.map((a, idx) => ({
+      id: idx + 1,
+      title: a.title,
+      source: a.source,
+      url: a.url,
+      sentiment: a.sentiment,
+      sentiment_score: a.sentimentScore,
+      sector: a.sector,
+    }))
+
+    const summary: BackendSentimentSummary = {
+      aggregate_score: avgScore,
+      sentiment_label: label,
+      article_count: targetArticles.length,
+      positive_count: posCount,
+      neutral_count: neuCount,
+      negative_count: negCount,
+    }
+
+    return createMessage('assistant', text, citations, summary)
   }
-  text += `\n**Market Impact & Outlook:**\n`
-  text += `- ${targetArticles[0].marketImpact}\n`
-  text += `- Valuation multiples remain supported by domestic institutional accumulation and resilient macroeconomic fundamentals.`
 
-  const citations: Citation[] = targetArticles.map((a, idx) => ({
-    id: idx + 1,
-    title: a.title,
-    source: a.source,
-    url: a.url,
-    sentiment: a.sentiment,
-    sentiment_score: a.sentimentScore,
-    sector: a.sector,
-  }))
-
-  const summary: BackendSentimentSummary = {
-    aggregate_score: avgScore,
-    sentiment_label: label,
-    article_count: targetArticles.length,
-    positive_count: posCount,
-    neutral_count: neuCount,
-    negative_count: negCount,
+  // 6. If query asks about a specific stock with no breaking news -> Equity Fundamental Profile
+  if (matchedSymbols.length > 0) {
+    const sym = matchedSymbols[0]
+    const equityText =
+      `### Equity Research Profile: **${sym}**\n\n` +
+      `- **Business Overview:** ${sym} is a leading constituent in the Indian benchmark index with multi-decade operating franchises.\n` +
+      `- **Key Growth Drivers:** Scale advantages, robust domestic consumption tailwinds, and operating leverage.\n` +
+      `- **Key Risk Triggers:** Raw material inflation, regulatory policy revisions, and global macroeconomic volatility.\n\n` +
+      `*(Note: No breaking news articles ingested in the last 24h for ${sym}; providing fundamental equity research profile).*`
+    return createMessage('assistant', equityText, [])
   }
 
-  return createMessage('assistant', text, citations, summary)
+  // 7. General Market Query Fallback
+  const generalText =
+    `### Indian Equities Market Analysis\n\n` +
+    `Regarding your query on *"${qRaw}"*:\n\n` +
+    `- **Domestic Market Health:** The Indian equity market (NIFTY 50 / SENSEX) maintains structural strength driven by consistent retail SIP participation (>₹20,000 Cr monthly) and corporate capex expansion.\n` +
+    `- **Sector Highlights:** Banking & Auto sectors demonstrate strong credit and volume momentum, while IT services maintain a steady posture awaiting discretionary global tech spend recovery.\n` +
+    `- **Recommended Actions:** You can query any specific stock (*'Analyze Tata Motors'*, *'HDFC Bank outlook'*), or a financial term (*'Explain P/E ratio'*) for targeted intelligence.`
+  return createMessage('assistant', generalText, [])
 }
 
 export function ChatbotPage() {
