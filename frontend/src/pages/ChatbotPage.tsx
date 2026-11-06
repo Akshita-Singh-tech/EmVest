@@ -709,6 +709,19 @@ export function ChatbotPage() {
     }
   }
 
+  // Handle clearing all chat threads
+  const handleClearAllSessions = async () => {
+    if (sessions.length === 0) return
+    const ids = sessions.map((s) => s.id)
+    setSessions([])
+    handleNewChat()
+    try {
+      await Promise.all(ids.map((id) => apiDeleteChatSession(id)))
+    } catch {
+      // offline
+    }
+  }
+
   // Handle user sending message
   const handleSend = async (textToSend?: string) => {
     const text = (textToSend || inputVal).trim()
@@ -791,8 +804,18 @@ export function ChatbotPage() {
 
         {/* Sessions List */}
         <div className="flex-1 overflow-y-auto p-2 space-y-1">
-          <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Recent Conversations ({sessions.length})
+          <div className="flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+            <span>Recent Conversations ({sessions.length})</span>
+            {sessions.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearAllSessions}
+                title="Clear all chat history"
+                className="text-slate-500 hover:text-red-400 text-[10px] lowercase hover:underline cursor-pointer transition"
+              >
+                clear all
+              </button>
+            )}
           </div>
 
           {sessions.length === 0 ? (

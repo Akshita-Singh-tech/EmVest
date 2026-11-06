@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
-import { Search, RefreshCw, Newspaper } from '../components/ui/Icons'
+import { Search, RefreshCw, Newspaper, Sparkles } from '../components/ui/Icons'
 import { EmptyState } from '../components/common/EmptyState'
 import { ArticleCard } from '../components/news/ArticleCard'
 import { ArticleDetailModal } from '../components/news/ArticleDetailModal'
@@ -13,6 +13,7 @@ import {
   getUniqueSources,
   fetchLiveNewsArticles,
 } from '../services/newsData'
+import { getUserPreferences } from '../services/personalizationStore'
 import type { NewsArticle, SentimentPolarity } from '../types/news'
 
 export function NewsPage() {
@@ -27,6 +28,8 @@ export function NewsPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'highest-sentiment' | 'lowest-sentiment'>('newest')
   const [selectedArticleState, setSelectedArticleState] = useState<NewsArticle | null>(null)
   const [liveArticles, setLiveArticles] = useState<NewsArticle[]>(() => getNewsArticles())
+  const [onlyTracked, setOnlyTracked] = useState(false)
+  const userPrefs = getUserPreferences()
 
   const sectors = useMemo(() => ['All Sectors', ...getUniqueSectors()], [])
   const sources = useMemo(() => ['All Publishers', ...getUniqueSources()], [])
@@ -53,10 +56,20 @@ export function NewsPage() {
     }
   }, [searchQuery, selectedSentiment, selectedSector, selectedSource, sortBy])
 
-  // Filtered articles list
+  // Filtered articles list factoring in user tracked symbols & sectors
   const filteredArticles = useMemo(() => {
-    return liveArticles
-  }, [liveArticles])
+    if (!onlyTracked) return liveArticles
+    const trackedSymbols = userPrefs.trackedSymbols || []
+    const trackedSectors = userPrefs.trackedSectors || []
+    if (trackedSymbols.length === 0 && trackedSectors.length === 0) return liveArticles
+    return liveArticles.filter((art) => {
+      const matchSym = (art.symbols || []).some((s) => trackedSymbols.includes(s))
+      const matchSec = trackedSectors.some(
+        (sec) => art.sector && art.sector.toLowerCase().includes(sec.toLowerCase())
+      )
+      return matchSym || matchSec
+    })
+  }, [liveArticles, onlyTracked, userPrefs])
 
   // Active article: either from URL params (e.g. /news/:id) or state
   const activeArticle = useMemo(() => {
@@ -106,7 +119,15 @@ export function NewsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={onlyTracked ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setOnlyTracked((prev) => !prev)}
+            leftIcon={<Sparkles size={13} />}
+          >
+            {onlyTracked ? 'Showing My Tracked Feed' : 'Filter by My Preferences'}
+          </Button>
           <Badge variant="success" size="sm">
             {positiveCount} Bullish
           </Badge>

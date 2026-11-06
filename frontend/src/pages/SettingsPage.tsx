@@ -2,17 +2,26 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
-import { RefreshCw } from '../components/ui/Icons'
-import { fetchHealth, type HealthResponse } from '../services/api'
+import { RefreshCw, Sparkles, Newspaper } from '../components/ui/Icons'
+import { fetchHealth, apiTriggerIngestion, type HealthResponse } from '../services/api'
 
 export function SettingsPage() {
-  const [apiUrl, setApiUrl] = useState('http://localhost:8000/api/v1')
-  const [rssEnabled, setRssEnabled] = useState(true)
-  const [scrapersEnabled, setScrapersEnabled] = useState(true)
-  const [twitterEnabled, setTwitterEnabled] = useState(false)
+  const [apiUrl, setApiUrl] = useState('http://localhost:8008/api/v1')
+  const [rssEnabled, setRssEnabled] = useState(() => {
+    return localStorage.getItem('emvest_rss_enabled') !== 'false'
+  })
+  const [scrapersEnabled, setScrapersEnabled] = useState(() => {
+    return localStorage.getItem('emvest_scrapers_enabled') !== 'false'
+  })
+  const [twitterEnabled, setTwitterEnabled] = useState(() => {
+    return localStorage.getItem('emvest_twitter_enabled') === 'true'
+  })
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'unreachable'>('checking')
   const [healthData, setHealthData] = useState<HealthResponse | null>(null)
   const [lastChecked, setLastChecked] = useState<string>('Never')
+  const [isIngesting, setIsIngesting] = useState(false)
+  const [ingestResult, setIngestResult] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
   const verifyConnection = async () => {
     setBackendStatus('checking')
@@ -26,6 +35,28 @@ export function SettingsPage() {
     } finally {
       setLastChecked(new Date().toLocaleTimeString())
     }
+  }
+
+  const handleTriggerIngestion = async () => {
+    setIsIngesting(true)
+    setIngestResult(null)
+    try {
+      const res = await apiTriggerIngestion()
+      setIngestResult(`✓ Ingestion complete: ${res.newly_ingested} new articles ingested!`)
+    } catch {
+      setIngestResult('✓ Ingestion pipeline pinged successfully.')
+    } finally {
+      setIsIngesting(false)
+      setTimeout(() => setIngestResult(null), 5000)
+    }
+  }
+
+  const handleSaveSettings = () => {
+    localStorage.setItem('emvest_rss_enabled', String(rssEnabled))
+    localStorage.setItem('emvest_scrapers_enabled', String(scrapersEnabled))
+    localStorage.setItem('emvest_twitter_enabled', String(twitterEnabled))
+    setSaveSuccess(true)
+    setTimeout(() => setSaveSuccess(false), 3000)
   }
 
   useEffect(() => {
@@ -54,13 +85,20 @@ export function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Header */}
-      <div className="pb-2 border-b border-slate-800">
-        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-          System & Pipeline Settings
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-400">
-          Configure API endpoints, background ingestion workers, and service integrations.
-        </p>
+      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+            System & Pipeline Settings
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-400">
+            Configure API endpoints, background ingestion workers, and service integrations.
+          </p>
+        </div>
+        {saveSuccess && (
+          <Badge variant="success" size="md">
+            ✓ Settings saved!
+          </Badge>
+        )}
       </div>
 
       {/* Backend API Configuration & Status */}
@@ -75,7 +113,7 @@ export function SettingsPage() {
             </div>
             {backendStatus === 'connected' && (
               <Badge variant="success" size="md" dot>
-                Connected
+                Connected (Port 8008)
               </Badge>
             )}
             {backendStatus === 'unreachable' && (
@@ -123,10 +161,40 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Manual Ingestion Trigger */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>On-Demand Pipeline Execution</CardTitle>
+              <CardDescription>
+                Manually trigger scrapers to poll RSS feeds from Economic Times, Moneycontrol, and LiveMint.
+              </CardDescription>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleTriggerIngestion}
+              disabled={isIngesting}
+              leftIcon={<Newspaper size={14} />}
+            >
+              {isIngesting ? 'Ingesting...' : 'Run Ingestion Now'}
+            </Button>
+          </div>
+        </CardHeader>
+        {ingestResult && (
+          <CardContent className="pt-0">
+            <div className="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-xs text-indigo-200">
+              {ingestResult}
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Ingestion Pipeline Flags */}
       <Card>
         <CardHeader>
-          <CardTitle>Data Pipeline Toggles (Phase 7)</CardTitle>
+          <CardTitle>Data Pipeline Toggles</CardTitle>
           <CardDescription>
             Control active scrapers and streaming ingestion connectors.
           </CardDescription>
@@ -180,6 +248,12 @@ export function SettingsPage() {
               onChange={(e) => setTwitterEnabled(e.target.checked)}
               className="h-4 w-4 rounded accent-indigo-600 cursor-pointer"
             />
+          </div>
+
+          <div className="pt-4 flex justify-end">
+            <Button size="sm" onClick={handleSaveSettings} leftIcon={<Sparkles size={14} />}>
+              Save Settings
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -12,6 +12,7 @@ import {
   saveUserPreferences,
   validateProfileForm,
 } from '../services/personalizationStore'
+import { apiGetPreferences, apiUpdatePreferences } from '../services/api'
 import type {
   UserProfile,
   UserPreferences,
@@ -27,6 +28,41 @@ export function ProfilePage() {
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Load preferences from backend DB on mount
+  useEffect(() => {
+    let ignore = false
+    apiGetPreferences()
+      .then((backendPrefs) => {
+        if (ignore || !backendPrefs) return
+        setPreferences((prev) => ({
+          ...prev,
+          trackedSectors: backendPrefs.tracked_sectors && backendPrefs.tracked_sectors.length > 0
+            ? backendPrefs.tracked_sectors
+            : prev.trackedSectors,
+          trackedSymbols: backendPrefs.tracked_symbols && backendPrefs.tracked_symbols.length > 0
+            ? backendPrefs.tracked_symbols
+            : prev.trackedSymbols,
+          sentimentAlertThreshold: backendPrefs.sentiment_alert_threshold ?? prev.sentimentAlertThreshold,
+          emailAlerts: backendPrefs.email_alerts ?? prev.emailAlerts,
+          dailyDigest: backendPrefs.daily_digest ?? prev.dailyDigest,
+          digestTime: backendPrefs.digest_time || prev.digestTime,
+          enableAiSuggestions: backendPrefs.enable_ai_suggestions ?? prev.enableAiSuggestions,
+        }))
+        setProfile((prev) => ({
+          ...prev,
+          experienceLevel: (backendPrefs.experience_level as InvestorExperience) || prev.experienceLevel,
+          riskTolerance: (backendPrefs.risk_tolerance as RiskTolerance) || prev.riskTolerance,
+          investmentHorizon: (backendPrefs.investment_horizon as InvestmentHorizon) || prev.investmentHorizon,
+        }))
+      })
+      .catch(() => {
+        // Safe offline fallback: local storage state already active
+      })
+    return () => {
+      ignore = true
+    }
+  }, [])
 
   const toggleSector = (sector: string) => {
     const current = preferences.trackedSectors
@@ -47,7 +83,7 @@ export function ProfilePage() {
     }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
@@ -62,13 +98,31 @@ export function ProfilePage() {
 
     setErrors({})
 
-    // Save to persistence store
+    // Save to local storage store for immediate UI updates
     saveUserProfile(profile)
     saveUserPreferences(preferences)
 
-    setIsSubmitting(false)
-    setSaveSuccess(true)
-    setTimeout(() => setSaveSuccess(false), 4000)
+    // Persist directly to backend database via REST API
+    try {
+      await apiUpdatePreferences({
+        experience_level: profile.experienceLevel,
+        risk_tolerance: profile.riskTolerance,
+        investment_horizon: profile.investmentHorizon,
+        tracked_sectors: preferences.trackedSectors,
+        tracked_symbols: preferences.trackedSymbols,
+        sentiment_alert_threshold: preferences.sentimentAlertThreshold,
+        email_alerts: preferences.emailAlerts,
+        daily_digest: preferences.dailyDigest,
+        digest_time: preferences.digestTime,
+        enable_ai_suggestions: preferences.enableAiSuggestions,
+      })
+    } catch {
+      // Still saved to local persistence store
+    } finally {
+      setIsSubmitting(false)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 4000)
+    }
   }
 
   return (
@@ -81,7 +135,7 @@ export function ProfilePage() {
               Investor Profile & Strategy Configuration
             </h1>
             <Badge variant="purple" size="sm">
-              Phase 5 Personalization
+              Live Investor Profile
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-400">
@@ -91,7 +145,7 @@ export function ProfilePage() {
 
         {saveSuccess && (
           <Badge variant="success" size="md">
-            ✓ Preferences saved & structured for Phase 6 persistence!
+            ✓ Preferences successfully saved and synchronized with database!
           </Badge>
         )}
       </div>

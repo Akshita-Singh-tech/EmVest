@@ -11,6 +11,7 @@ import {
   addSymbolToWatchlist,
   removeSymbolFromWatchlist,
 } from '../services/personalizationStore'
+import { apiAddWatchlist, apiDeleteWatchlist } from '../services/api'
 import type { WatchlistRecord } from '../types/personalization'
 
 export function WatchlistPage() {
@@ -70,6 +71,14 @@ export function WatchlistPage() {
       return
     }
 
+    // Persist to backend database in background
+    apiAddWatchlist({
+      symbol: tickerInput.toUpperCase(),
+      name: tickerInput.toUpperCase(),
+      sector: 'NSE/BSE Equities',
+      notes: notesInput || undefined,
+    }).catch(() => {})
+
     setAddError(null)
     setAddSuccess(`Successfully added ${tickerInput.toUpperCase()} to watchlist!`)
     setTickerInput('')
@@ -86,6 +95,7 @@ export function WatchlistPage() {
 
   const handleRemove = (symbol: string) => {
     removeSymbolFromWatchlist(symbol)
+    apiDeleteWatchlist(symbol).catch(() => {})
   }
 
   return (
