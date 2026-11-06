@@ -196,6 +196,54 @@ function generateLocalResponse(
         `- **Demat Account:** Digital depository holding your shares safely with government depositories (**CDSL** or **NSDL**).\n` +
         `- **Trading Account:** Broker interface (Zerodha, Groww, AngelOne) used to execute buy and sell orders on NSE/BSE.`,
     },
+    circuit_breakers: {
+      keywords: ['upper circuit', 'lower circuit', 'circuit breaker', 'circuit breakers', 'circuits', 'price band', 'price bands', 'asm', 'gsm'],
+      content:
+        `### Circuit Breakers & Price Bands\n\n` +
+        `- **Stock Price Bands:** Daily volatility limits (typically 2%, 5%, 10%, or 20%) set by exchanges. Hit limits freeze trading to prevent panic manipulation.\n` +
+        `- **Index Circuit Breakers:** Market-wide halts triggered if NIFTY/SENSEX drops 10%, 15%, or 20%.\n` +
+        `- **ASM & GSM Framework:** SEBI surveillance lists warning investors of extreme speculative volatility.`,
+    },
+    options_fo: {
+      keywords: ['f&o', 'futures', 'options', 'call option', 'call options', 'put option', 'put options', 'derivative', 'derivatives'],
+      content:
+        `### Futures & Options (F&O)\n\n` +
+        `- **Call Option (CE):** Right to buy at strike price. Used for bullish bets or hedging.\n` +
+        `- **Put Option (PE):** Right to sell at strike price. Used for bearish bets or portfolio protection.\n` +
+        `- **SEBI Caution:** Over 93% of retail individual traders in F&O incur net losses. Derivatives are designed for risk hedging, not retail gambling.`,
+    },
+    moving_averages: {
+      keywords: ['moving average', 'moving averages', '200 dma', '50 dma', 'golden cross', 'death cross', 'ema', 'sma'],
+      content:
+        `### Moving Averages in Technical Analysis\n\n` +
+        `- **200 DMA:** Long-term institutional trend floor. Trading above signals bull market regime; below signals caution.\n` +
+        `- **Golden Cross:** 50 DMA crossing above 200 DMA (bullish trend confirmation).\n` +
+        `- **Death Cross:** 50 DMA crossing below 200 DMA (bearish trend confirmation).`,
+    },
+    rsi: {
+      keywords: ['rsi', 'relative strength index', 'overbought', 'oversold'],
+      content:
+        `### Relative Strength Index (RSI)\n\n` +
+        `- Momentum oscillator measuring price speed (0-100).\n` +
+        `- **RSI > 70:** Overbought zone (caution against chasing highs).\n` +
+        `- **RSI < 30:** Oversold zone (potential accumulation or bounce).`,
+    },
+    option_greeks: {
+      keywords: ['option greeks', 'option greek', 'greeks', 'theta', 'delta', 'gamma', 'vega'],
+      content:
+        `### Option Greeks Essentials\n\n` +
+        `- **Delta:** Expected premium change per ₹1 move in underlying asset.\n` +
+        `- **Theta (Time Decay):** Daily premium erosion as expiry nears. Buyers lose theta; sellers collect theta.\n` +
+        `- **Vega:** Sensitivity to volatility (India VIX).`,
+    },
+    promoter_pledging: {
+      keywords: ['promoter pledging', 'promoter pledge', 'pledge', 'pledging', 'pledged shares'],
+      content:
+        `### Promoter Pledging & Governance Risk\n\n` +
+        `- Promoters borrowing money by pledging their own company shares as collateral.\n` +
+        `- **Risk:** If share price drops, lenders trigger margin calls and dump shares, causing severe crashes.\n` +
+        `- **Rule:** Avoid companies where pledged promoter holding exceeds 10-15%.`,
+    },
   }
 
   // Check definitional concept matches
@@ -223,7 +271,81 @@ function generateLocalResponse(
     return createMessage('assistant', indexText, [])
   }
 
-  // 4. Stock Recommendations / Model Portfolio ("Which stocks to buy?")
+  // 4. Capital-Specific Investment Allocation Blueprints
+  if (qLower.includes('10000') || qLower.includes('10,000') || qLower.includes('ten thousand')) {
+    const text =
+      `### Strategic Capital Allocation Blueprint: **₹10,000**\n\n` +
+      `- **70% in NIFTYBEES ETF:** Instant low-cost diversification across 50 Indian blue-chips.\n` +
+      `- **30% in High-Conviction Compounder:** E.g., HDFC Bank or Reliance Industries.\n\n` +
+      `**Strategy:** Use this as the starting brick of your compounding journey. Focus on monthly SIP discipline.`
+    return createMessage('assistant', text, [])
+  }
+  if (qLower.includes('50000') || qLower.includes('50,000') || qLower.includes('fifty thousand')) {
+    const text =
+      `### Strategic Capital Allocation Blueprint: **₹50,000**\n\n` +
+      `- **60% NIFTYBEES / Nifty 50 Index Fund:** Foundation anchor.\n` +
+      `- **25% High-Growth Mid-Cap Leaders:** Tata Motors, Zomato, or Polycab.\n` +
+      `- **15% Sovereign Gold Bond (SGB) / Gold ETF:** Defensive hedge.`
+    return createMessage('assistant', text, [])
+  }
+  if (qLower.includes('1 lakh') || qLower.includes('100000') || qLower.includes('one lakh') || qLower.includes('1 lac')) {
+    const text =
+      `### Strategic Capital Allocation Blueprint: **₹1 Lakh**\n\n` +
+      `#### 1. Core Large-Caps (50% - ₹50,000):\n` +
+      `- Reliance Industries, HDFC Bank, L&T, TCS.\n\n` +
+      `#### 2. High-Growth Mid-Caps (30% - ₹30,000):\n` +
+      `- Tata Motors (EV/JLR turnaround), Zomato (Quick commerce scale), Polycab.\n\n` +
+      `#### 3. Defensives & Cash Buffer (20% - ₹20,000):\n` +
+      `- ITC (Dividend yield ~3.2%), Sun Pharma, or Liquid Fund for buying dips.\n\n` +
+      `**Execution Tip:** Stagger purchases in 3 monthly installments (₹33,000 each) to average cost.`
+    return createMessage('assistant', text, [])
+  }
+  if (qLower.includes('10 lakh') || qLower.includes('1000000') || qLower.includes('ten lakh')) {
+    const text =
+      `### Strategic Capital Allocation Blueprint: **₹10 Lakhs**\n\n` +
+      `- **45% Large-Cap Compounders:** HDFC Bank, ICICI Bank, Reliance, L&T, TCS.\n` +
+      `- **25% Quality Mid-Caps:** Tata Motors, Trent, Polycab, Dixon.\n` +
+      `- **15% Small-Cap / Thematic Alpha:** High-ROCE niche market leaders.\n` +
+      `- **15% Arbitrage / Liquid STP:** Systematic deployment pool over 4-6 months.`
+    return createMessage('assistant', text, [])
+  }
+
+  // 5. Sector Research Guides (Defense, Railways, Renewable, etc.)
+  const sectorGuides: Record<string, { title: string; tailwinds: string; headwinds: string; leaders: string }> = {
+    defense: {
+      title: 'Defense & Aerospace',
+      tailwinds: 'Government indigenization mandate ("Make in India"), multi-year record order backlogs, and rising export volumes.',
+      headwinds: 'Lumpy quarterly milestone execution and dependency on central budgetary allocations.',
+      leaders: 'HAL (Hindustan Aeronautics), BEL (Bharat Electronics), Mazagon Dock, Cochin Shipyard',
+    },
+    railway: {
+      title: 'Indian Railways & Rail Infrastructure',
+      tailwinds: 'Massive government capex for Vande Bharat trainsets, high-speed rail corridors, track doubling, and freight modernization.',
+      headwinds: 'Lower single-digit operating margins on pure-play EPC contracts.',
+      leaders: 'RVNL, IRFC, IRCON, Titagarh Rail',
+    },
+    renewable: {
+      title: 'Renewable Energy & Green Transition',
+      tailwinds: 'National target of 500 GW non-fossil capacity by 2030, PLI schemes for solar/wind/electrolyzers, and corporate ESG capex.',
+      headwinds: 'Transmission evacuation bottlenecks and imported cell price volatility.',
+      leaders: 'Tata Power, Suzlon Energy, NTPC Green, IREDA',
+    },
+  }
+  for (const [secKey, secData] of Object.entries(sectorGuides)) {
+    if (qLower.includes(secKey) && !qLower.includes('tata') && !qLower.includes('reliance')) {
+      const text =
+        `### Sector Research & Macro Outlook: **${secData.title}**\n\n` +
+        `#### 1. Core Industry Tailwinds\n` +
+        `- ${secData.tailwinds}\n\n` +
+        `#### 2. Key Headwinds & Risk Factors\n` +
+        `- ${secData.headwinds}\n\n` +
+        `#### 3. Sector Leaders & Key Stocks\n` +
+        `- **Leaders:** ${secData.leaders}`
+      return createMessage('assistant', text, [])
+    }
+  }
+
+  // 6. Stock Recommendations / Model Portfolio ("Which stocks to buy?")
   const recPatterns = [
     'which stock', 'what stock', 'best stock', 'recommend', 'stocks to buy',
     'top stock', 'good stock', 'where to invest', 'portfolio', 'invest 10000',
@@ -299,6 +421,31 @@ function generateLocalResponse(
     BAJFINANCE: ['bajaj finance', 'bajfinance'],
     ZOMATO: ['zomato', 'blinkit'],
     BHARTIARTL: ['airtel', 'bharti airtel', 'bharti'],
+    BEL: ['bel', 'bharat electronics'],
+    HAL: ['hal', 'hindustan aeronautics', 'tejas'],
+    RVNL: ['rvnl', 'rail vikas nigam'],
+    IRFC: ['irfc', 'indian railway finance'],
+    IREDA: ['ireda'],
+    POLYCAB: ['polycab'],
+    DIXON: ['dixon'],
+    TRENT: ['trent', 'zudio', 'westside'],
+    SUZLON: ['suzlon'],
+    DLF: ['dlf'],
+    ADANIENT: ['adani enterprises', 'adani'],
+    ADANIPORTS: ['adani ports', 'apsez'],
+    KOTAKBANK: ['kotak', 'kotak mahindra'],
+    AXISBANK: ['axis bank', 'axisbank'],
+    HINDUNILVR: ['hindustan unilever', 'hul'],
+    TATASTEEL: ['tata steel', 'tatasteel'],
+    POWERGRID: ['power grid', 'powergrid'],
+    NTPC: ['ntpc'],
+    COALINDIA: ['coal india'],
+    ULTRACEMCO: ['ultratech'],
+    ASIANPAINT: ['asian paints', 'asian paint'],
+    BAJAJAUTO: ['bajaj auto'],
+    MM: ['m&m', 'mahindra', 'scorpio', 'thar'],
+    CDSL: ['cdsl'],
+    BSE: ['bse'],
   }
 
   const matchedSymbols: string[] = []

@@ -195,3 +195,39 @@ def test_financial_concept_and_index_intents():
     assert "Free-Float Market Capitalization" in r_nifty.json()["answer"]
 
 
+def test_capital_allocation_intent():
+    """Verify that asking 'Where to invest 1 Lakh?' returns structured allocation percentages."""
+    res = client.post("/api/v1/chat/query", json={"query": "Where should I invest 1 Lakh?"})
+    assert res.status_code == 200
+    data = res.json()
+    assert "₹1 Lakh" in data["answer"]
+    assert "Core Large-Caps" in data["answer"]
+    assert "Mid-Cap" in data["answer"]
+
+
+def test_trading_and_derivatives_intent():
+    """Verify that asking about call/put options and circuit breakers returns accurate technical definitions."""
+    res_opt = client.post("/api/v1/chat/query", json={"query": "What are call and put options?"})
+    assert res_opt.status_code == 200
+    assert "Futures & Options" in res_opt.json()["answer"]
+    assert "Call Option" in res_opt.json()["answer"]
+
+    res_circ = client.post("/api/v1/chat/query", json={"query": "What are circuit breakers in stock market?"})
+    assert res_circ.status_code == 200
+    assert "Circuit Breakers" in res_circ.json()["answer"]
+
+
+def test_sector_and_stock_profile_intents():
+    """Verify that querying for Defense sector and Trent returns detailed profile analyses."""
+    res_sec = client.post("/api/v1/chat/query", json={"query": "Tell me about the Defense sector"})
+    assert res_sec.status_code == 200
+    assert "Defense & Aerospace" in res_sec.json()["answer"]
+    assert "Tailwinds" in res_sec.json()["answer"]
+
+    res_trent = client.post("/api/v1/chat/query", json={"query": "What does Trent do?"})
+    assert res_trent.status_code == 200
+    assert "Trent Ltd" in res_trent.json()["answer"]
+    assert "Zudio" in res_trent.json()["answer"]
+
+
+
