@@ -51,7 +51,10 @@ const defaultSuggestedPrompts = [
 const initialGreeting: ChatMessage = {
   id: 'greeting-init',
   sender: 'assistant',
-  text: 'Hello! I am your Emvest Agentic Research Assistant with conversational memory.\n\nJust like ChatGPT, I remember previous questions and topics across this conversation thread. Every answer is grounded in real financial news with verifiable citations.\n\nHow can I assist your market research today?',
+  text:
+    'Hello! I am your Emvest Investment Advisor. I am here to help answer any queries you have and provide strategic advice on your investments, equity research, and portfolio allocation.\n\n' +
+    'All insights are synthesized directly from verified, real-time market data to keep you informed with up-to-date and accurate analysis across Indian equities and macro trends.\n\n' +
+    'How can I help you with your investments today?',
   timestamp: 'Just now',
 }
 
@@ -101,16 +104,16 @@ function generateLocalResponse(
   ]
   if (greetingPatterns.some((p) => p.test(qLower)) && qRaw.split(' ').length <= 6) {
     const text =
-      `### Hello! I am Emvest AI\n\n` +
-      `I am your dedicated **Agentic Investment Intelligence Assistant** designed specifically for Indian equities (NSE/BSE) and macroeconomic trends.\n\n` +
+      `### Hello! I am your Emvest Investment Advisor\n\n` +
+      `I am here to help answer any queries you have and provide tailored advice on your investments, equity research, and portfolio allocation across Indian equities (NSE/BSE) and macroeconomic trends.\n\n` +
       `**Here is what you can ask me:**\n` +
-      `- **Stock Analysis:** *'Should I buy Reliance?'* or *'What is the outlook for Tata Motors electric vehicles?'*\n` +
-      `- **Recommendations:** *'Which stocks should I buy for the long term?'* or *'Best large cap compounders'*.\n` +
-      `- **Market Movements:** *'Why is the market falling today?'* or *'What drives Nifty corrections?'*\n` +
-      `- **Financial Concepts:** *'What is P/E ratio and how is it used?'* or *'Explain EBITDA vs Net Profit'*.\n` +
-      `- **Macroeconomic & Policy:** *'How does the RBI repo rate impact banking stocks?'* or *'What is the outlook for IT sector guidance?'*.\n` +
+      `- **Stock Analysis & Advice:** *'Should I invest in Reliance or Tata Motors?'* or *'What is the outlook for banking stocks?'*\n` +
+      `- **Recommendations & Portfolios:** *'Where should I invest ₹1 Lakh for the long term?'* or *'Best large cap compounders'*.\n` +
+      `- **Market Movements:** *'What is driving today's market movements?'* or *'What factors influence Nifty trends?'*\n` +
+      `- **Financial Concepts & Valuations:** *'What is P/E ratio and how is it used?'* or *'Explain EBITDA vs Net Profit'*.\n` +
+      `- **Macroeconomic & Sectoral Outlook:** *'How does the RBI repo rate impact banking stocks?'* or *'Analyze the Defense sector'*.\n` +
       `- **Stock Comparisons:** *'Compare Tata Motors and Maruti Suzuki'*.\n\n` +
-      `All breaking news analysis is verified against real-time ingested publications with FinBERT sentiment scores.`
+      `All market analysis is grounded in verified, real-time financial data to ensure timely and actionable insights.`
     return createMessage('assistant', text, [])
   }
 
@@ -784,7 +787,7 @@ export function ChatbotPage() {
 
   return (
     <div className="flex h-[calc(100vh-8.5rem)] max-w-7xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/40 backdrop-blur-md overflow-hidden shadow-2xl">
-      {/* ChatGPT-style Sessions Sidebar */}
+      {/* Chat Sessions Sidebar */}
       <div
         className={`${
           sidebarOpen ? 'w-72' : 'w-0'
@@ -885,7 +888,7 @@ export function ChatbotPage() {
 
           <div className="flex items-center gap-2">
             <Badge variant="purple" size="sm">
-              ChatGPT Memory • RAG
+              Active Advisory
             </Badge>
 
             <Button

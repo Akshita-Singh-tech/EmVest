@@ -25,3 +25,4 @@ class GroqProvider(OpenAIProvider):
             provider_name="groq",
             client=client,
         )
+
