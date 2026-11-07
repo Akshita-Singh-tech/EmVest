@@ -14,6 +14,7 @@ import {
   fetchLiveNewsArticles,
 } from '../services/newsData'
 import { getUserPreferences } from '../services/personalizationStore'
+import { apiTriggerIngestion } from '../services/api'
 import type { NewsArticle, SentimentPolarity } from '../types/news'
 
 export function NewsPage() {
@@ -29,7 +30,33 @@ export function NewsPage() {
   const [selectedArticleState, setSelectedArticleState] = useState<NewsArticle | null>(null)
   const [liveArticles, setLiveArticles] = useState<NewsArticle[]>(() => getNewsArticles())
   const [onlyTracked, setOnlyTracked] = useState(false)
+  const [isIngesting, setIsIngesting] = useState(false)
+  const [ingestStatus, setIngestStatus] = useState<string | null>(null)
   const userPrefs = getUserPreferences()
+
+  const handleLiveIngest = async () => {
+    setIsIngesting(true)
+    try {
+      const res = await apiTriggerIngestion()
+      setIngestStatus(`Fetched ${res.newly_ingested} new articles (${res.total_articles} active in database)`)
+      const updated = await fetchLiveNewsArticles({
+        searchQuery,
+        sentiment: selectedSentiment,
+        sector: selectedSector,
+        source: selectedSource,
+        sortBy,
+      })
+      if (updated && updated.length > 0) {
+        setLiveArticles(updated)
+      }
+      setTimeout(() => setIngestStatus(null), 4500)
+    } catch {
+      setIngestStatus('Live fetch timed out or offline; keeping current database items.')
+      setTimeout(() => setIngestStatus(null), 4000)
+    } finally {
+      setIsIngesting(false)
+    }
+  }
 
   const sectors = useMemo(() => ['All Sectors', ...getUniqueSectors()], [])
   const sources = useMemo(() => ['All Publishers', ...getUniqueSources()], [])
@@ -120,6 +147,20 @@ export function NewsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {ingestStatus && (
+            <span className="text-xs px-2.5 py-1 rounded bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 font-mono animate-fade-in">
+              {ingestStatus}
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLiveIngest}
+            disabled={isIngesting}
+            leftIcon={<RefreshCw size={13} className={isIngesting ? 'animate-spin' : ''} />}
+          >
+            {isIngesting ? 'Scraping Live News...' : 'Fetch Live Market RSS'}
+          </Button>
           <Button
             variant={onlyTracked ? 'primary' : 'outline'}
             size="sm"

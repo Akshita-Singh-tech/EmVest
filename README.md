@@ -1,135 +1,214 @@
-# Emvest
+# Emvest — AI-Powered Stock Market Intelligence & Agentic Investment Research
 
-> **AI-Powered Stock Market Intelligence & Agentic Investment Research**
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![FinBERT](https://img.shields.io/badge/NLP-FinBERT-FF6F00?style=flat)](https://huggingface.co/ProsusAI/finbert)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Emvest is a modern financial intelligence and investment research platform that combines real-time market data ingestion, sentiment analysis, agentic AI assistance, and interactive portfolio analytics for Indian and global equities.
+**Emvest** is a comprehensive, production-grade financial intelligence and agentic investment research platform designed specifically for the **Indian Equities Market (NSE / BSE)** and global macroeconomic tracking.
+
+It integrates live multi-source RSS scraping, an NLP FinBERT sentiment engine, dynamic sector/equity analytics, persistent user preferences, and a ChatGPT-style multi-turn financial research assistant.
 
 ---
 
-## Architecture Overview
+## 🌟 Key Features
 
-- **Frontend:** React 19 + TypeScript + Vite + Tailwind CSS v4 + React Router
-- **Backend:** FastAPI (Python 3.11+) + Pydantic v2 + Uvicorn
-- **Database & Persistence (Upcoming Phase 6):** PostgreSQL + SQLAlchemy + Alembic
-- **Intelligence & NLP (Upcoming Phases 7 & 8):** FinBERT sentiment analysis, RSS / news scrapers, and LLM-powered retrieval assistant
+### 1. 📰 Real-Time Multi-Source Market Ingestion
+- Actively ingests live market headlines and company news from **The Economic Times**, **LiveMint**, and **Moneycontrol**.
+- Automatic ticker extraction for **60+ Indian equities** (`RELIANCE`, `TCS`, `HDFCBANK`, `INFY`, `TATAMOTORS`, `SBIN`, `ITC`, `TITAN`, `BAJFINANCE`, etc.).
+- Categorizes articles across 10 core Indian sectors (*Banking & Financial Services, IT, Automobile, Energy & Oil, Pharma, FMCG, Metals, Infrastructure, Telecom, Macro*).
+- Live on-demand scrapers with immediate database persistence into SQLite (`emvest.db`).
+
+### 2. 🧠 FinBERT Financial Sentiment Engine
+- Evaluates real-time financial sentiment with confidence scores (`Positive`, `Neutral`, `Negative` on a `-1.0` to `+1.0` scale).
+- Extracts bulleted **Key Investment Takeaways** and classifies directional **Market Catalysts**.
+- Eliminates mock data — powers all UI feeds directly from verified publisher articles.
+
+### 3. 🤖 ChatGPT-Style Multi-Turn AI Financial Assistant
+- Multi-turn conversational memory with persistent session storage and clear-session management.
+- Covers **60+ equities**, 12 sector theses, 35+ fundamental and technical metrics (P/E, ROCE, RSI, MACD, EBITDA margins).
+- Pre-engineered capital allocation blueprints (₹10,000, ₹50,000, ₹1 Lakh, ₹10 Lakhs) across Conservative, Balanced, and Aggressive profiles.
+- Provides grounded source citations with direct links to real news articles.
+
+### 4. 📊 Real-Time Sentiment Intelligence & Analytics Dashboard
+- **Composite FinBERT Index**: Dynamically calculated across all ingested articles.
+- **Sentiment Trajectory Chart**: Interactive Recharts area chart tracking market drift over time.
+- **Polarity Donut**: Proportional split of Bullish, Neutral, and Bearish market sentiments.
+- **Sector Comparison Bar Chart**: Relative momentum and sentiment rankings across all 10 Indian industry sectors.
+- **Company Deep Dive**: Ticker-level metrics, primary catalysts, and recent indexed news.
+
+### 5. ⚙️ Personalization & Watchlist
+- Persistent investor profile tracking (Experience level, Risk tolerance, Tracked symbols, Tracked sectors).
+- Filter the entire news feed by personal watchlist tickers and sectors with one click.
+- Full REST API synchronization between SQLite database and frontend state.
 
 ---
 
-## Getting Started
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    subgraph Data Sources
+        ET["The Economic Times"]
+        LM["LiveMint"]
+        MC["Moneycontrol"]
+    end
+
+    subgraph Backend [FastAPI Backend (:8008)]
+        Ingest["RSS Ingestion & Scraper Pipeline"]
+        FinBERT["FinBERT NLP Sentiment Engine"]
+        Agent["Chatbot & Financial Intelligence Agent"]
+        DB[(SQLite Database: emvest.db)]
+        API["REST Endpoints /api/v1"]
+    end
+
+    subgraph Frontend [React 19 + Vite (:5173)]
+        News["News Intelligence Feed"]
+        Analytics["Recharts Sentiment Dashboard"]
+        Chat["AI Assistant & Chat History"]
+        Watchlist["Watchlist & Preferences"]
+    end
+
+    ET --> Ingest
+    LM --> Ingest
+    MC --> Ingest
+    Ingest --> FinBERT
+    FinBERT --> DB
+    DB --> API
+    API --> Agent
+    API --> News
+    API --> Analytics
+    API --> Chat
+    API --> Watchlist
+```
+
+---
+
+## 🚀 Quickstart Guide
 
 ### Prerequisites
-
-- **Node.js:** v20+ (`node -v`)
-- **Python:** 3.11+ via Conda (`conda --version`)
-- **Git:** Installed and configured
-
----
-
-### Backend Setup
-
-1. **Activate the Conda environment:**
-   ```bash
-   conda activate emvest
-   ```
-
-2. **Navigate to the backend directory and install dependencies:**
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
-
-3. **Run the backend development server:**
-   ```bash
-   uvicorn main:app --reload --port 8000
-   ```
-   The backend API will be available at `http://localhost:8000`.
-   API Documentation (Swagger UI): `http://localhost:8000/docs`.
-
-4. **Run tests:**
-   ```bash
-   python -m pytest
-   ```
+- **Node.js** v20+ (`node -v`)
+- **Python** 3.11+ (`python3 --version`)
+- **Git**
 
 ---
 
-### Frontend Setup
-
-1. **Navigate to the frontend directory:**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server:**
-   ```bash
-   npm run dev
-   ```
-   Open `http://localhost:5173` in your browser.
-
-4. **Build and lint:**
-   ```bash
-   npm run lint
-   npm run build
-   ```
+### 1. Clone the Repository
+```bash
+git clone https://github.com/<your-username>/emvest.git
+cd emvest
+```
 
 ---
 
-## Project Structure
+### 2. Backend Setup
+
+```bash
+cd backend
+
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate    # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# (Optional) Seed / scrape real live Indian market news immediately
+python ingest_real_news.py
+
+# Start the FastAPI server on port 8008
+uvicorn main:app --port 8008 --reload
+```
+The backend API will run at `http://localhost:8008`.
+Interactive Swagger API Docs: `http://localhost:8008/docs`
+
+---
+
+### 3. Frontend Setup
+
+```bash
+cd ../frontend
+
+# Install dependencies
+npm install
+
+# Start Vite dev server
+npm run dev
+```
+Open `http://localhost:5173` in your browser.
+Vite reverse-proxies `/api` requests directly to `http://127.0.0.1:8008/api/v1`.
+
+---
+
+### 4. Running Tests & Verifications
+
+```bash
+# Run Backend Test Suite (24 tests)
+cd backend
+PYTHONPATH=. .venv/bin/pytest
+
+# Run Frontend Lint & Typecheck Build
+cd ../frontend
+npm run lint
+npm run build
+```
+
+---
+
+## 📡 API Reference
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/v1/health` | Service health status check |
+| `GET` | `/api/v1/news` | List indexed market articles with sentiment filters, sectors, and symbols |
+| `POST` | `/api/v1/news/ingest` | Trigger live multi-publisher RSS ingestion |
+| `GET` | `/api/v1/analytics/overview` | Composite sentiment index, polarity percentages, and trajectory |
+| `GET` | `/api/v1/analytics/sectors` | Comparative sentiment rankings for Indian industry sectors |
+| `GET` | `/api/v1/analytics/company/{symbol}` | Equity-specific sentiment score, catalysts, and recent articles |
+| `POST` | `/api/v1/chat/query` | Ask AI Copilot with multi-turn conversation memory |
+| `GET` | `/api/v1/chat/history/{session_id}` | Retrieve full conversation trajectory |
+| `GET` | `/api/v1/preferences` | Retrieve persistent investor preferences |
+| `PUT` | `/api/v1/preferences` | Update investor risk tolerance and tracked symbols |
+| `GET` | `/api/v1/watchlist` | Get user watchlist items |
+| `POST` | `/api/v1/watchlist` | Add a stock symbol to watchlist |
+| `DELETE` | `/api/v1/watchlist/{symbol}` | Remove a stock symbol from watchlist |
+
+---
+
+## 📂 Project Structure
 
 ```text
 emvest/
-├── docs/                   # Project documentation, architecture, logs
-│   ├── architecture.md
-│   ├── api-documentation.md
-│   └── development-log.md
-├── backend/                # FastAPI application
+├── backend/                        # FastAPI Python backend
 │   ├── app/
-│   │   ├── api/            # API route controllers
-│   │   ├── core/           # Configuration and settings
-│   │   ├── models/         # Database models
-│   │   ├── schemas/        # Pydantic validation schemas
-│   │   ├── database/       # DB session and migrations
-│   │   ├── services/       # Business logic
-│   │   ├── chatbot/        # AI assistant service
-│   │   ├── analytics/      # Financial metrics and calculations
-│   │   ├── sentiment/      # FinBERT NLP pipelines
-│   │   ├── scrapers/       # RSS & news scrapers
-│   │   └── twitter/        # X/Twitter data ingestion
-│   ├── tests/              # Pytest test suite
+│   │   ├── api/                    # REST routes (news, analytics, chat, preferences, watchlist)
+│   │   ├── chatbot/                # Multi-intent financial AI reasoning engine
+│   │   ├── database/               # SQLAlchemy DB engine & session
+│   │   ├── models/                 # ORM models (Article, ChatSession, UserPreferences, Watchlist)
+│   │   ├── scrapers/               # Multi-source RSS feed parsers
+│   │   ├── sentiment/              # FinBERT NLP sentiment scoring worker
+│   │   └── services/               # Ingestion pipeline & business logic
+│   ├── tests/                      # Pytest automated test suite
+│   ├── ingest_real_news.py         # Standalone live scraping script
 │   ├── requirements.txt
-│   └── main.py             # FastAPI entrypoint
-├── frontend/               # Vite + React 19 application
+│   └── main.py                     # Server entrypoint
+├── frontend/                       # React 19 + TypeScript frontend
 │   ├── src/
-│   │   ├── components/     # UI, Layout, and Common components
-│   │   ├── pages/          # Routed pages
-│   │   ├── services/       # API clients
-│   │   ├── styles/         # Global styles & Tailwind
-│   │   ├── hooks/          # Custom React hooks
-│   │   ├── types/          # TypeScript definitions
-│   │   ├── App.tsx
-│   │   └── main.tsx
+│   │   ├── components/             # Reusable UI primitives, charts, layouts
+│   │   ├── pages/                  # NewsPage, AnalyticsPage, ChatbotPage, WatchlistPage, ProfilePage
+│   │   ├── services/               # API clients & store synchronization
+│   │   └── types/                  # Strict TypeScript interfaces
 │   ├── package.json
-│   └── vite.config.ts
-├── .env.example            # Environment variables template
+│   └── vite.config.ts              # Vite config with API reverse proxy
 ├── .gitignore
+├── .env.example
 └── README.md
 ```
 
 ---
 
-## Roadmap
-
-- [x] **Phase 1: Project Foundation** (Backend scaffolding, Conda 3.11 env, FastAPI health API, Vite + React 19 + Tailwind v4 frontend, verification)
-- [x] **Phase 2: UI Shell** (Responsive layout, sidebar, navbar, 7 routed pages, shared UI primitives: Card, Badge, EmptyState, Button)
-- [x] **Phase 3: Analytics UI** (Recharts, sentiment trajectory area charts, sector ranking bar charts, polarity donuts, company deep-dives, explicit no-data states)
-- [x] **Phase 4: News Intelligence UI** (Live multi-publisher feed, article cards, multi-criteria filters, detail view with FinBERT takeaways & market impact)
-- [x] **Phase 5: Personalization UI** (Profile, watchlists, sector selection, master NSE/BSE company picker, validated preferences)
-- [x] **Phase 6: Backend & DB** (SQLAlchemy 2.0, Alembic migrations, PostgreSQL/SQLite compatibility, JWT auth, preferences & watchlist REST APIs, tests)
-- [x] **Phase 7: Data Pipeline** (RSS/scrapers, FinBERT sentiment worker, real article database, analytics & news endpoints)
-- [x] **Phase 8: AI Assistant** (Retrieval, context building, LLM service, source citations, grounded answers)
-- [x] **Phase 9: Integration & E2E Testing** (Full end-to-end testing, security review, polish)
-
+## 📄 License
+This project is licensed under the MIT License.

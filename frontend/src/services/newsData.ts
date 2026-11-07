@@ -154,8 +154,27 @@ export const sampleArticles: NewsArticle[] = [
   },
 ]
 
+let cachedArticles: NewsArticle[] = []
+
+export function formatPublishedTime(dateStr?: string): string {
+  if (!dateStr) return 'Recent'
+  try {
+    const d = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    const diffMins = Math.floor(diffMs / (1000 * 60))
+    if (diffMins >= 0 && diffMins < 1) return 'Just now'
+    if (diffMins >= 1 && diffMins < 60) return `${diffMins}m ago`
+    const diffHours = Math.floor(diffMins / 60)
+    if (diffHours >= 1 && diffHours < 24) return `${diffHours}h ago`
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  } catch {
+    return 'Recent'
+  }
+}
+
 export function getNewsArticles(options: NewsFilterOptions = {}): NewsArticle[] {
-  let list = [...sampleArticles]
+  let list = cachedArticles.length > 0 ? [...cachedArticles] : [...sampleArticles]
 
   // Filter by sentiment
   if (options.sentiment && options.sentiment !== 'All') {
@@ -203,13 +222,13 @@ export async function fetchLiveNewsArticles(options: NewsFilterOptions = {}): Pr
       source: options.source,
     })
     if (backendItems && backendItems.length > 0) {
-      return backendItems.map((bi) => ({
+      cachedArticles = backendItems.map((bi) => ({
         id: String(bi.id),
         title: bi.title,
         summary: bi.summary,
         content: [bi.content],
         source: bi.source,
-        publishedAt: bi.published_at ? new Date(bi.published_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+        publishedAt: formatPublishedTime(bi.published_at),
         readTime: '3 min read',
         url: bi.url,
         sector: bi.sector,
@@ -220,6 +239,7 @@ export async function fetchLiveNewsArticles(options: NewsFilterOptions = {}): Pr
         keyTakeaways: bi.key_takeaways || [],
         marketImpact: bi.market_impact || '',
       }))
+      return getNewsArticles(options)
     }
   } catch {
     // Backend offline, fallback to local dataset
@@ -228,15 +248,17 @@ export async function fetchLiveNewsArticles(options: NewsFilterOptions = {}): Pr
 }
 
 export function getArticleById(id: string): NewsArticle | undefined {
-  return sampleArticles.find((a) => a.id === id)
+  return cachedArticles.find((a) => a.id === id) || sampleArticles.find((a) => a.id === id)
 }
 
 export function getUniqueSectors(): string[] {
-  const set = new Set(sampleArticles.map((a) => a.sector))
+  const currentList = cachedArticles.length > 0 ? cachedArticles : sampleArticles
+  const set = new Set(currentList.map((a) => a.sector).filter(Boolean))
   return Array.from(set)
 }
 
 export function getUniqueSources(): string[] {
-  const set = new Set(sampleArticles.map((a) => a.source))
+  const currentList = cachedArticles.length > 0 ? cachedArticles : sampleArticles
+  const set = new Set(currentList.map((a) => a.source).filter(Boolean))
   return Array.from(set)
 }

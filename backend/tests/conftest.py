@@ -18,3 +18,4 @@ def clean_test_sessions():
                 db.query(ChatMessage).filter(ChatMessage.session_id == s.id).delete()
                 db.delete(s)
         db.commit()
+

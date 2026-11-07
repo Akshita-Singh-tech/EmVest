@@ -18,7 +18,7 @@ def get_articles(
     sector: Optional[str] = Query(None, description="Filter by sector"),
     source: Optional[str] = Query(None, description="Filter by publisher source"),
     symbol: Optional[str] = Query(None, description="Filter by stock ticker symbol"),
-    limit: int = Query(50, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
 ):
@@ -59,6 +59,10 @@ def get_article(article_id: int, db: Session = Depends(get_db)):
 
 @router.post("/ingest", response_model=IngestionResponse)
 def trigger_ingestion(db: Session = Depends(get_db)):
-    result = run_ingestion_pipeline(db, force_seed=True)
-    return IngestionResponse(**result)
+    result = run_ingestion_pipeline(db, force_seed=False)
+    return IngestionResponse(
+        status=result["status"],
+        newly_ingested=result["newly_ingested"],
+        total_articles=result["total_articles"],
+    )
 

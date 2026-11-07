@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from app.models.article import Article
 from app.sentiment.finbert_worker import finbert_worker
-from app.scrapers.rss_scraper import extract_symbols, classify_sector
+from app.scrapers.rss_scraper import extract_symbols, classify_sector, fetch_all_rss_feeds
 
 SEED_ARTICLES = [
     {
@@ -131,12 +131,31 @@ def ingest_article(db: Session, raw_item: Dict[str, Any]) -> Article:
     return article
 
 
-def run_ingestion_pipeline(db: Session, force_seed: bool = True) -> Dict[str, Any]:
-    """Runs ingestion across feeds and seeds baseline real data."""
+def run_ingestion_pipeline(db: Session, force_seed: bool = False, max_articles: int = 150) -> Dict[str, Any]:
+    """Runs ingestion across live RSS feeds and persists newly scraped articles."""
     count_before = db.query(Article).count()
     ingested_count = 0
+    errors = []
 
-    if force_seed or count_before == 0:
+    # 1. Fetch live news articles from authentic Indian financial portals
+    try:
+        live_articles = fetch_all_rss_feeds()
+        for item in live_articles[:max_articles]:
+            external_id = item.get("external_id")
+            if not external_id:
+                external_id = hashlib.md5(item["url"].encode()).hexdigest()
+            existing = db.query(Article).filter(Article.external_id == external_id).first()
+            if not existing:
+                try:
+                    ingest_article(db, item)
+                    ingested_count += 1
+                except Exception as e:
+                    errors.append(str(e))
+    except Exception as e:
+        errors.append(f"Feed fetch error: {e}")
+
+    # 2. If database is completely empty and no live articles were fetched, ensure baseline seeds
+    if db.query(Article).count() == 0 or force_seed:
         for item in SEED_ARTICLES:
             existing = db.query(Article).filter(Article.external_id == item["external_id"]).first()
             if not existing:
@@ -148,5 +167,6 @@ def run_ingestion_pipeline(db: Session, force_seed: bool = True) -> Dict[str, An
         "status": "success",
         "newly_ingested": ingested_count,
         "total_articles": total_articles,
+        "errors": errors if errors else None,
     }
 
