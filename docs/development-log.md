@@ -189,3 +189,28 @@ tests/test_agent_prompt_injection_in_source_preserves_system_prompt PASSED [100%
 ============================== 14 passed in 0.16s ==============================
 ```
 
+
+---
+
+## Phase 11: Neural ProsusAI/FinBERT Sentiment Engine Integration (Completed)
+
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **PyTorch & Transformers Engine** | Installed `torch-2.8.0` and `transformers-4.57.6` with Apple Silicon `mps` acceleration support into `backend/.venv` | Verified (`PyTorch: 2.8.0, MPS: True`) |
+| **Hugging Face Model Caching** | Preloaded `ProsusAI/finbert` tokenizer and sequence classification weights (`~438MB`) into local cache | Verified (`model.safetensors 100%`) |
+| **Neural FinBertSentimentWorker** | Upgraded `backend/app/sentiment/finbert_worker.py` to run full neural forward-pass inference on `ProsusAI/finbert` with 512-token truncation, softmax probabilities, and continuous score calculation | Verified |
+| **Offline & Heuristic Fallback** | Maintained resilient offline fallback to lexical keyword scoring in case of neural initialization exceptions | Verified |
+| **Database Re-scoring** | Re-analyzed all 229 ingested financial news articles in `emvest.db` using neural FinBERT with high-confidence classifications | Verified (229 articles re-scored) |
+| **Unit & Pipeline Tests** | `tests/test_pipeline.py::test_finbert_sentiment_worker` passed with positive confidence > 0.95 and negative confidence > 0.95 | Verified (5/5 passed) |
+
+```text
+============================= test session starts ==============================
+tests/test_pipeline.py::test_rss_scraper_utilities PASSED                [ 20%]
+tests/test_pipeline.py::test_rss_xml_parser PASSED                       [ 40%]
+tests/test_pipeline.py::test_finbert_sentiment_worker PASSED             [ 60%]
+tests/test_pipeline.py::test_pipeline_ingest_and_query_endpoints PASSED  [ 80%]
+tests/test_pipeline.py::test_analytics_endpoints_from_real_data PASSED   [100%]
+========================= 5 passed, 1 warning in 6.47s =========================
+```

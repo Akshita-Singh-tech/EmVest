@@ -89,3 +89,4 @@ class GeminiProvider(LLMProvider):
                 raise LLMError("Unexpected generation failure", provider="gemini") from None
 
         raise LLMError(last_error_msg, provider="gemini")
+

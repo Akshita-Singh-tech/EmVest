@@ -87,3 +87,4 @@ class OpenAIProvider(LLMProvider):
                 raise LLMError("Unexpected generation failure", provider="openai") from None
 
         raise LLMError(last_error_msg, provider="openai")
+

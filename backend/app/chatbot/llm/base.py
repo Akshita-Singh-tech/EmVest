@@ -33,3 +33,4 @@ class LLMProvider(ABC):
             LLMError: If any network, timeout, validation, or HTTP error occurs.
         """
         raise NotImplementedError
+

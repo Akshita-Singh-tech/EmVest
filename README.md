@@ -21,10 +21,12 @@ It integrates live multi-source RSS scraping, a financial lexicon sentiment engi
 - Categorizes articles across 10 core Indian sectors (*Banking & Financial Services, IT, Automobile, Energy & Oil, Pharma, FMCG, Metals, Infrastructure, Telecom, Macro*).
 - Live on-demand scrapers with immediate database persistence into SQLite (`emvest.db`).
 
-### 2. 🧠 Financial Lexicon Sentiment Engine
-- Evaluates real-time financial sentiment with confidence metrics (`Positive`, `Neutral`, `Negative` on a `-1.0` to `+1.0` scale).
-- Extracts bulleted **Key Investment Takeaways** and classifies directional **Market Catalysts** based on financial dictionaries.
-- Eliminates mock data — powers all UI feeds directly from verified publisher articles.
+### 2. 🧠 Neural FinBERT Sentiment Engine
+- Evaluates real-time financial sentiment with neural inference using Hugging Face **`ProsusAI/finbert`** (BERT fine-tuned on Financial PhraseBank).
+- Computes softmax probability distributions across `Positive`, `Neutral`, and `Negative` categories, mapped to continuous scores from `-1.0` to `+1.0` and calibrated confidence metrics.
+- Leverages Apple Silicon **MPS** (Metal Performance Shaders) / CUDA / CPU hardware acceleration with token truncation (512 tokens).
+- Automatically extracts bulleted **Key Investment Takeaways** and directional **Market Impact** commentary with confidence tags.
+- Includes a resilient heuristic fallback ensuring uninterrupted operation in offline or resource-constrained environments.
 
 ### 3. 🤖 Grounded AI Financial Assistant (LLM Layer + Rule-Based Fallback)
 - **Dual-Mode Generation:** Powered by a direct HTTP LLM provider layer (**Google Gemini** or **OpenAI**) with seamless fallback to an extensive deterministic financial reasoning engine.

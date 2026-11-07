@@ -169,7 +169,7 @@ sequenceDiagram
     P->>DB: Check URL deduplication filter
     alt Article is new
         P->>FB: Pass title, summary & body
-        FB->>FB: Run dictionary + context scoring
+        FB->>FB: Tokenize & run neural inference (ProsusAI/finbert on MPS/CPU)
         FB-->>P: Return polarity, confidence & sentiment score
         P->>DB: Save Article with FinBERT sentiment & symbols
     else Article exists

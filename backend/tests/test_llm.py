@@ -334,3 +334,4 @@ def test_agent_prompt_injection_in_source_preserves_system_prompt():
         finally:
             db.delete(injection_article)
             db.commit()
+
