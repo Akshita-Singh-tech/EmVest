@@ -132,3 +132,12 @@ def get_company_analytics(symbol: str, db: Session = Depends(get_db)):
         recent_articles=recent_list,
     )
 
+
+
+from app.services.market_quotes import get_realtime_market_data
+
+
+@router.get("/quotes")
+def get_market_quotes():
+    """Returns verified real-time Indian market indices (Nifty, Sensex, Bank Nifty, VIX) and equity quotes."""
+    return get_realtime_market_data()

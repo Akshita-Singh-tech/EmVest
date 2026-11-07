@@ -10,35 +10,102 @@ import {
   Bot,
   Sparkles,
   ChevronRight,
+  RefreshCw,
 } from '../components/ui/Icons'
 import { getNewsArticles, fetchLiveNewsArticles } from '../services/newsData'
+import { apiGetMarketQuotes, type MarketQuoteIndex, type MarketQuoteEquity } from '../services/api'
 import type { NewsArticle } from '../types/news'
 
-const marketIndices = [
-  { name: 'NIFTY 50', value: '24,320.15', change: '+0.78%', positive: true, sentiment: 'Bullish (+0.74)' },
-  { name: 'SENSEX', value: '79,890.40', change: '+0.65%', positive: true, sentiment: 'Bullish (+0.69)' },
-  { name: 'BANK NIFTY', value: '51,840.90', change: '-0.21%', positive: false, sentiment: 'Neutral (+0.05)' },
-  { name: 'INDIA VIX', value: '13.45', change: '-3.12%', positive: true, sentiment: 'Low Volatility' },
+const defaultIndices: MarketQuoteIndex[] = [
+  { name: 'NIFTY 50', value: '25,030.35', raw_price: 25030.35, change: '+2.01%', positive: true, sentiment: 'Bullish (+2.01%)' },
+  { name: 'SENSEX', value: '81,028.02', raw_price: 81028.02, change: '+2.17%', positive: true, sentiment: 'Bullish (+2.17%)' },
+  { name: 'BANK NIFTY', value: '59,086.00', raw_price: 59086.00, change: '+2.27%', positive: true, sentiment: 'Bullish (+2.27%)' },
+  { name: 'INDIA VIX', value: '17.46', raw_price: 17.46, change: '+12.10%', positive: true, sentiment: 'Low Volatility' },
 ]
 
-const watchlistHighlights = [
-  { symbol: 'RELIANCE', name: 'Reliance Industries', price: '₹1,328.40', change: '+1.4%', sentiment: 'Bullish' },
-  { symbol: 'TCS', name: 'Tata Consultancy Services', price: '₹4,120.00', change: '+0.3%', sentiment: 'Neutral' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', price: '₹1,745.80', change: '-0.5%', sentiment: 'Bearish' },
-  { symbol: 'INFY', name: 'Infosys Ltd', price: '₹1,890.15', change: '+2.1%', sentiment: 'Bullish' },
+const defaultWatchlist: MarketQuoteEquity[] = [
+  { symbol: 'RELIANCE', name: 'Reliance Industries', price: '₹1,320.00', raw_price: 1320.0, change: '+0.50%', positive: true, sentiment: 'Bullish' },
+  { symbol: 'TCS', name: 'Tata Consultancy Services', price: '₹2,498.50', raw_price: 2498.5, change: '+0.11%', positive: true, sentiment: 'Neutral' },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', price: '₹788.25', raw_price: 788.25, change: '+3.72%', positive: true, sentiment: 'Bullish' },
+  { symbol: 'INFY', name: 'Infosys Ltd', price: '₹1,181.40', raw_price: 1181.4, change: '+1.20%', positive: true, sentiment: 'Bullish' },
+  { symbol: 'SBIN', name: 'State Bank of India', price: '₹1,018.50', raw_price: 1018.5, change: '+1.85%', positive: true, sentiment: 'Bullish' },
 ]
 
 export function DashboardPage() {
   const [articles, setArticles] = useState<NewsArticle[]>(() => getNewsArticles().slice(0, 4))
+  const [indices, setIndices] = useState<MarketQuoteIndex[]>(defaultIndices)
+  const [watchlist, setWatchlist] = useState<MarketQuoteEquity[]>(defaultWatchlist)
+  const [lastRefreshed, setLastRefreshed] = useState<string>('Live')
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
+
+  const fetchUpdatedData = async () => {
+    const [quoteRes, newsRes] = await Promise.allSettled([
+      apiGetMarketQuotes(),
+      fetchLiveNewsArticles({ sortBy: 'newest' }),
+    ])
+
+    if (quoteRes.status === 'fulfilled' && quoteRes.value) {
+      if (quoteRes.value.indices && quoteRes.value.indices.length > 0) {
+        setIndices(quoteRes.value.indices)
+      }
+      if (quoteRes.value.watchlist && quoteRes.value.watchlist.length > 0) {
+        setWatchlist(quoteRes.value.watchlist)
+      }
+    }
+
+    if (newsRes.status === 'fulfilled' && newsRes.value && newsRes.value.length > 0) {
+      setArticles(newsRes.value.slice(0, 4))
+    }
+
+    setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+  }
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      await fetchUpdatedData()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
 
   useEffect(() => {
-    fetchLiveNewsArticles({ sortBy: 'newest' })
-      .then((items) => {
-        if (items && items.length > 0) {
-          setArticles(items.slice(0, 4))
+    let isMounted = true
+
+    const runSync = async () => {
+      try {
+        const [quoteRes, newsRes] = await Promise.allSettled([
+          apiGetMarketQuotes(),
+          fetchLiveNewsArticles({ sortBy: 'newest' }),
+        ])
+
+        if (!isMounted) return
+
+        if (quoteRes.status === 'fulfilled' && quoteRes.value) {
+          if (quoteRes.value.indices && quoteRes.value.indices.length > 0) {
+            setIndices(quoteRes.value.indices)
+          }
+          if (quoteRes.value.watchlist && quoteRes.value.watchlist.length > 0) {
+            setWatchlist(quoteRes.value.watchlist)
+          }
         }
-      })
-      .catch(() => {})
+
+        if (newsRes.status === 'fulfilled' && newsRes.value && newsRes.value.length > 0) {
+          setArticles(newsRes.value.slice(0, 4))
+        }
+
+        setLastRefreshed(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      } catch {
+        // Keep active cache
+      }
+    }
+
+    void runSync()
+    const timer = setInterval(() => { void runSync() }, 60000)
+    return () => {
+      isMounted = false
+      clearInterval(timer)
+    }
   }, [])
 
   return (
@@ -46,9 +113,14 @@ export function DashboardPage() {
       {/* Hero Welcome Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-900/60 via-slate-900 to-slate-900 border border-indigo-500/30 p-6 sm:p-8">
         <div className="relative z-10 max-w-2xl space-y-3">
-          <Badge variant="purple" size="md">
-            Live Market Intelligence
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="purple" size="md">
+              Live Market Intelligence
+            </Badge>
+            <span className="text-[11px] text-slate-400 font-medium">
+              Updated: {lastRefreshed}
+            </span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Financial Intelligence & Real-Time Market Advisory
           </h1>
@@ -64,13 +136,21 @@ export function DashboardPage() {
                 View Sector Sentiment
               </Button>
             </Link>
+            <Button
+              variant="secondary"
+              size="md"
+              leftIcon={<RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />}
+              onClick={handleManualRefresh}
+            >
+              Refresh Quotes
+            </Button>
           </div>
         </div>
       </div>
 
       {/* Market Indices Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {marketIndices.map((idx) => (
+        {indices.map((idx) => (
           <Card key={idx.name}>
             <CardContent className="p-4 space-y-2">
               <div className="flex items-center justify-between text-xs text-slate-400">
@@ -148,7 +228,7 @@ export function DashboardPage() {
 
           <Card>
             <CardContent className="p-3 divide-y divide-slate-800">
-              {watchlistHighlights.map((stock) => (
+              {watchlist.map((stock) => (
                 <div key={stock.symbol} className="py-3 flex items-center justify-between first:pt-1 last:pb-1">
                   <div>
                     <div className="font-bold text-sm text-white">{stock.symbol}</div>

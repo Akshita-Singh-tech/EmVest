@@ -369,3 +369,40 @@ export async function apiCreateChatSession(title: string = 'New Conversation'): 
 export async function apiDeleteChatSession(sessionId: string): Promise<{ status: string; session_id: string }> {
   return apiClearChatHistory(sessionId)
 }
+
+
+export interface MarketQuoteIndex {
+  name: string
+  value: string
+  raw_price: number
+  change: string
+  positive: boolean
+  sentiment: string
+}
+
+export interface MarketQuoteEquity {
+  symbol: string
+  name: string
+  price: string
+  raw_price: number
+  change: string
+  positive: boolean
+  sentiment: string
+}
+
+export interface MarketQuotesResponse {
+  status: string
+  last_updated: string
+  indices: MarketQuoteIndex[]
+  watchlist: MarketQuoteEquity[]
+}
+
+export async function apiGetMarketQuotes(): Promise<MarketQuotesResponse> {
+  const response = await fetch(`${API_BASE_URL}/analytics/quotes`, {
+    signal: AbortSignal.timeout(6000),
+  })
+  if (!response.ok) {
+    throw new Error(`Failed to fetch market quotes: ${response.status}`)
+  }
+  return response.json()
+}
