@@ -1,3 +1,4 @@
+from typing import Optional
 from abc import ABC, abstractmethod
 
 
@@ -8,10 +9,18 @@ class LLMError(Exception):
     included in exception representations or stack trace messages.
     """
 
-    def __init__(self, message: str, provider: str = "unknown"):
+    def __init__(
+        self,
+        message: str,
+        provider: str = "unknown",
+        status_code: Optional[int] = None,
+        error_text: Optional[str] = None,
+    ):
         super().__init__(f"[{provider}] {message}")
         self.provider = provider
         self.message = message
+        self.status_code = status_code
+        self.error_text = error_text
 
 
 class LLMProvider(ABC):

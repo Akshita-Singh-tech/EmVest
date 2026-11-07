@@ -214,3 +214,42 @@ tests/test_pipeline.py::test_pipeline_ingest_and_query_endpoints PASSED  [ 80%]
 tests/test_pipeline.py::test_analytics_endpoints_from_real_data PASSED   [100%]
 ========================= 5 passed, 1 warning in 6.47s =========================
 ```
+
+---
+
+## Phase 12: Groq LLM Provider Wrapper & Multi-Provider Auto-Fallback
+
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **OpenAI-Compatible Base URL** | Refactored `OpenAIProvider` to accept a configurable `base_url` (`https://api.openai.com/v1` default) and `provider_name` | Verified |
+| **Groq Provider** | Implemented `GroqProvider` in `app/chatbot/llm/groq_provider.py` subclassing `OpenAIProvider` with default base URL `https://api.groq.com/openai/v1` and model `llama-3.3-70b-versatile` | Verified |
+| **Pydantic Configuration** | Added `groq_api_key` and `groq_model` to `Settings` in `app/core/config.py` and commented templates to `.env.example` | Verified |
+| **Factory Precedence** | Updated `factory.get_provider()` so that in `auto` mode, Groq is checked first (`groq_api_key`), followed by Gemini, then OpenAI, and fallback to `None` | Verified |
+| **Unit Test Suite** | Added unit tests using `httpx.MockTransport` in `tests/test_llm.py` testing Groq request headers, base URL, 5xx retry handling, 401 error mapping with zero secret leakage, and factory precedence | Verified (18/18 passed in 0.16s) |
+| **Sanitized Live Check Script** | Updated `backend/scripts/check_llm.py` to support Groq, and on failure print only the HTTP status and provider error message text without raw request, headers, or keys | Verified |
+| **Live Integration Status** | Unit-tested only; live integration verification pending operator manual execution with personal API key | Pending Operator Run |
+
+```text
+============================= test session starts ==============================
+tests/test_llm.py::test_factory_deterministic_returns_none PASSED        [  5%]
+tests/test_llm.py::test_factory_auto_picks_groq_first_when_all_keys_set PASSED [ 11%]
+tests/test_llm.py::test_factory_auto_picks_gemini_when_groq_key_empty PASSED [ 16%]
+tests/test_llm.py::test_factory_auto_picks_openai_when_groq_and_gemini_keys_empty PASSED [ 22%]
+tests/test_llm.py::test_factory_auto_returns_none_when_no_keys PASSED    [ 27%]
+tests/test_llm.py::test_factory_explicit_provider_selection PASSED       [ 33%]
+tests/test_llm.py::test_unit_gemini_request_handling_success PASSED      [ 38%]
+tests/test_llm.py::test_unit_gemini_5xx_retry_handling PASSED            [ 44%]
+tests/test_llm.py::test_unit_gemini_error_mapping_no_secret_leak PASSED  [ 50%]
+tests/test_llm.py::test_unit_openai_request_handling_success PASSED      [ 55%]
+tests/test_llm.py::test_unit_openai_5xx_retry_handling PASSED            [ 61%]
+tests/test_llm.py::test_unit_openai_error_mapping_no_secret_leak PASSED  [ 66%]
+tests/test_llm.py::test_unit_groq_request_handling_success PASSED        [ 72%]
+tests/test_llm.py::test_unit_groq_5xx_retry_handling PASSED              [ 77%]
+tests/test_llm.py::test_unit_groq_error_mapping_no_secret_leak PASSED    [ 83%]
+tests/test_llm.py::test_agent_faked_provider_success_path_with_valid_citations PASSED [ 88%]
+tests/test_llm.py::test_agent_faked_provider_llmerror_triggers_rule_based_fallback PASSED [ 94%]
+tests/test_agent_prompt_injection_in_source_preserves_system_prompt PASSED [100%]
+============================== 18 passed in 0.16s ==============================
+```

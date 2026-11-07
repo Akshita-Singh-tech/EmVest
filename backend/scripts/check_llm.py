@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Live integration check script for Emvest LLM provider.
 
-Invokes the configured provider (Gemini or OpenAI) with a simple prompt,
+Invokes the configured provider (Groq, Gemini, or OpenAI) with a simple prompt,
 measures network latency, and prints the first 200 characters of the response.
-NEVER prints the API key or raw authorization headers.
+On failure, prints the HTTP status and the provider's error message text only.
+NEVER prints the API key, raw request, or authorization headers.
 """
 
 import os
@@ -26,15 +27,24 @@ def main():
 
     if provider is None:
         print("\n[!] No active LLM provider detected.")
-        print("    Neither GEMINI_API_KEY nor OPENAI_API_KEY is configured in backend environment,")
+        print("    Neither GROQ_API_KEY, GEMINI_API_KEY, nor OPENAI_API_KEY is configured in backend environment,")
         print("    or DEFAULT_LLM_PROVIDER is set to 'deterministic'.")
         print("\nTo test live:")
-        print("  export GEMINI_API_KEY='your_api_key_here'")
+        print("  export GROQ_API_KEY='your_groq_api_key_here'")
+        print("  # or: export GEMINI_API_KEY='your_gemini_api_key_here'")
+        print("  # or: export OPENAI_API_KEY='your_openai_api_key_here'")
         print("  python scripts/check_llm.py")
         sys.exit(1)
 
     provider_class = provider.__class__.__name__
-    provider_name = "Gemini" if "Gemini" in provider_class else ("OpenAI" if "OpenAI" in provider_class else provider_class)
+    if "Groq" in provider_class:
+        provider_name = "Groq"
+    elif "Gemini" in provider_class:
+        provider_name = "Gemini"
+    elif "OpenAI" in provider_class:
+        provider_name = "OpenAI"
+    else:
+        provider_name = provider_class
     model_name = getattr(provider, "model", "default")
 
     print(f"Provider: {provider_name} (Model: {model_name})")
@@ -49,11 +59,18 @@ def main():
         latency = time.perf_counter() - t_start
     except LLMError as err:
         latency = time.perf_counter() - t_start
-        print(f"\n[X] Live call failed after {latency:.2f}s: {err}")
+        status_code = getattr(err, "status_code", None)
+        status_display = str(status_code) if status_code is not None else "N/A"
+        error_text = getattr(err, "error_text", None) or getattr(err, "message", "Unknown provider error")
+        print(f"\n[X] Live call failed after {latency:.2f}s:")
+        print(f"    HTTP Status: {status_display}")
+        print(f"    Error Message: {error_text}")
         sys.exit(1)
     except Exception as exc:
         latency = time.perf_counter() - t_start
-        print(f"\n[X] Unexpected error after {latency:.2f}s: {exc.__class__.__name__}")
+        print(f"\n[X] Unexpected error after {latency:.2f}s:")
+        print("    HTTP Status: N/A")
+        print(f"    Error Message: {exc.__class__.__name__}")
         sys.exit(1)
 
     print("\n[✓] Live LLM Response Received:")
@@ -69,4 +86,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

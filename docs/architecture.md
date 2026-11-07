@@ -192,7 +192,7 @@ flowchart TD
     Agent --> Retrieval["Database Retrieval (Article Table)"]
     Retrieval --> Factory{"get_provider()"}
     Factory -->|None / Missing Key / Deterministic| Fallback["Rule-Based Intent Engine"]
-    Factory -->|Active Provider| LLM["LLM Provider (Gemini / OpenAI via httpx)"]
+    Factory -->|Active Provider| LLM["LLM Provider (Groq / Gemini / OpenAI via httpx)"]
     LLM -->|LLMError / Timeout / Empty| Fallback
     LLM -->|Success| Grounded["Grounded Response with Verified [n] Citations"]
     Fallback --> DBWrite["Persist Turn to Database"]
@@ -202,12 +202,13 @@ flowchart TD
 
 ### Provider Wrapper (`app/chatbot/llm/`)
 - **Abstract Base (`base.py`):** `LLMProvider` interface defining `generate(system_prompt, user_prompt, *, timeout=15.0) -> str` and the sanitized `LLMError` exception.
+- **Groq Provider (`groq_provider.py`):** Reuses the OpenAI-compatible REST API at `https://api.groq.com/openai/v1/chat/completions` using `httpx`. Headers carry `Bearer {groq_api_key}`. Model defaults to `llama-3.3-70b-versatile` via `settings.groq_model`.
 - **Gemini Provider (`gemini_provider.py`):** Communicates directly with Google AI Studio `v1beta/models/{model}:generateContent` using `httpx`. Headers carry `x-goog-api-key`. System instructions use the root-level `systemInstruction` field. Model defaults to `gemini-2.5-flash` via `settings.gemini_model`.
-- **OpenAI Provider (`openai_provider.py`):** Communicates directly with OpenAI `v1/chat/completions` using `httpx`. Authorization uses `Bearer {api_key}`. Model defaults to `gpt-4o-mini` via `settings.openai_model`.
+- **OpenAI Provider (`openai_provider.py`):** Communicates directly with OpenAI `v1/chat/completions` using `httpx` with configurable base URL. Authorization uses `Bearer {api_key}`. Model defaults to `gpt-4o-mini` via `settings.openai_model`.
 - **Factory (`factory.py`):** Resolves provider based on `settings.default_llm_provider`:
-  - `"auto"`: Returns `GeminiProvider` if `gemini_api_key` is set, else `OpenAIProvider` if `openai_api_key` is set, else `None`.
+  - `"auto"`: Returns `GroqProvider` if `groq_api_key` is set, else `GeminiProvider` if `gemini_api_key` is set, else `OpenAIProvider` if `openai_api_key` is set, else `None`.
   - `"deterministic"`: Always returns `None`.
-  - `"gemini"` / `"openai"`: Selects specific provider if its key is configured, else returns `None`.
+  - `"groq"` / `"gemini"` / `"openai"`: Selects specific provider if its key is configured, else returns `None`.
 
 ### Grounded Prompting & Untrusted Data Boundary
 - **Sources Delimitation:** Database articles are wrapped inside `<sources>` tags with labeled identifiers `[1]`, `[2]`, etc., including publisher, timestamp, sentiment label, and summary.

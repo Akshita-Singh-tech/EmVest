@@ -29,8 +29,8 @@ It integrates live multi-source RSS scraping, a financial lexicon sentiment engi
 - Includes a resilient heuristic fallback ensuring uninterrupted operation in offline or resource-constrained environments.
 
 ### 3. 🤖 Grounded AI Financial Assistant (LLM Layer + Rule-Based Fallback)
-- **Dual-Mode Generation:** Powered by a direct HTTP LLM provider layer (**Google Gemini** or **OpenAI**) with seamless fallback to an extensive deterministic financial reasoning engine.
-- **Provider Wrapper (`app/chatbot/llm/`):** Vendor-independent implementation using `httpx` (no bulky SDKs). Features configurable models (`gemini-2.5-flash`, `gpt-4o-mini`), 15s timeout, one retry on 5xx or timeout, and sanitized exception handling.
+- **Dual-Mode Generation:** Powered by a direct HTTP LLM provider layer (**Groq**, **Google Gemini**, or **OpenAI**) with seamless fallback to an extensive deterministic financial reasoning engine.
+- **Provider Wrapper (`app/chatbot/llm/`):** Vendor-independent implementation using `httpx` (no bulky SDKs). Features configurable models (`llama-3.3-70b-versatile`, `gemini-2.5-flash`, `gpt-4o-mini`), 15s timeout, one retry on 5xx or timeout, and sanitized exception handling.
 - **Grounded & Untrusted Data Defense:** Formats retrieved database articles inside delimited `<sources>` blocks, instructs the LLM to ignore adversarial prompt injections inside articles, and filters citations to match only the sources actually referenced (`[1]`, `[2]`).
 - **SEBI / Non-Financial Advice Protection:** Enforces ending every response with a one-line "not financial advice" note.
 - **Coverage:** Covers **60+ equities**, 12 sector theses, 35+ fundamental and technical metrics (P/E, ROCE, RSI, MACD, EBITDA margins), and capital allocation blueprints.
@@ -97,7 +97,9 @@ Configure environment variables in `.env` (or pass via environment):
 
 | Variable | Default | Description |
 |---|---|---|
-| `DEFAULT_LLM_PROVIDER` | `auto` | Provider mode: `auto` (Gemini if key set, else OpenAI, else fallback), `gemini`, `openai`, or `deterministic` |
+| `DEFAULT_LLM_PROVIDER` | `auto` | Provider mode: `auto` (Groq if key set, else Gemini, else OpenAI, else fallback), `groq`, `gemini`, `openai`, or `deterministic` |
+| `GROQ_API_KEY` | *(None)* | Groq API key (read from backend environment only) |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | Groq model identifier (e.g. `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`) |
 | `GEMINI_API_KEY` | *(None)* | Google AI Studio API key (kept strictly on backend) |
 | `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model name |
 | `OPENAI_API_KEY` | *(None)* | OpenAI API key (kept strictly on backend) |
@@ -109,10 +111,13 @@ Configure environment variables in `.env` (or pass via environment):
 
 ## 🧪 Testing Scope (Unit vs. Live Integration)
 
-- **Unit Tests:** Request/response payloads, 5xx retries, timeout handling, and prompt injection defense are fully unit-tested using `httpx.MockTransport` and faked providers (do not require an external API key or network access).
-- **Live Integration Check:** Use the dedicated script `backend/scripts/check_llm.py` to make a live test call with an active provider key:
+- **Unit Tests:** Request/response payloads, 5xx retries, timeout handling, and prompt injection defense for Groq, Gemini, and OpenAI are fully unit-tested using `httpx.MockTransport` and faked providers (do not require an external API key or network access).
+- **Live Integration Check:** Use the dedicated script `backend/scripts/check_llm.py` to make a live test call with an active provider key (not claimed live until executed with a real user key):
   ```bash
-  export GEMINI_API_KEY="your-key-here"
+  export GROQ_API_KEY="your-groq-key-here"
+  # or: export GEMINI_API_KEY="your-gemini-key-here"
+  python scripts/check_llm.py
+  ```
   cd backend && python scripts/check_llm.py
   ```
     LM --> Ingest

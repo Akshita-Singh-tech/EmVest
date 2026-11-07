@@ -34,6 +34,7 @@ class GeminiProvider(LLMProvider):
             },
             "contents": [
                 {
+                    "role": "user",
                     "parts": [{"text": user_prompt}]
                 }
             ],
@@ -42,6 +43,8 @@ class GeminiProvider(LLMProvider):
         # Up to 2 attempts (initial attempt + one retry on timeout or 5xx)
         max_attempts = 2
         last_error_msg = "Unknown error"
+        last_status_code = None
+        last_err_text = None
 
         for attempt in range(max_attempts):
             try:
@@ -54,15 +57,44 @@ class GeminiProvider(LLMProvider):
 
                 status_code = response.status_code
 
+                # Parse provider's error text safely if available
+                provider_err_text = None
+                if status_code != 200:
+                    try:
+                        err_json = response.json()
+                        if isinstance(err_json, dict):
+                            err_obj = err_json.get("error")
+                            if isinstance(err_obj, dict):
+                                provider_err_text = err_obj.get("message")
+                            elif isinstance(err_obj, str):
+                                provider_err_text = err_obj
+                    except Exception:
+                        pass
+
                 # Retry on 5xx server errors
                 if status_code >= 500:
                     last_error_msg = f"Server returned HTTP {status_code}"
+                    last_status_code = status_code
+                    last_err_text = provider_err_text or f"Server error {status_code}"
                     if attempt < max_attempts - 1:
                         continue
-                    raise LLMError(last_error_msg, provider="gemini")
+                    raise LLMError(
+                        last_error_msg,
+                        provider="gemini",
+                        status_code=status_code,
+                        error_text=last_err_text,
+                    )
 
                 if status_code != 200:
-                    raise LLMError(f"Request failed with HTTP {status_code}", provider="gemini")
+                    err_msg = f"Request failed with HTTP {status_code}"
+                    if provider_err_text:
+                        err_msg += f": {provider_err_text}"
+                    raise LLMError(
+                        err_msg,
+                        provider="gemini",
+                        status_code=status_code,
+                        error_text=provider_err_text or f"HTTP {status_code}",
+                    )
 
                 try:
                     data = response.json()
@@ -73,14 +105,19 @@ class GeminiProvider(LLMProvider):
                     if not parts or not parts[0].get("text"):
                         raise LLMError("Empty response: no content text returned", provider="gemini")
                     return parts[0]["text"].strip()
-                except (ValueError, KeyError, IndexError) as err:
+                except (ValueError, KeyError, IndexError):
                     raise LLMError("Malformed response payload from provider", provider="gemini") from None
 
             except httpx.TimeoutException:
                 last_error_msg = "Request timed out"
                 if attempt < max_attempts - 1:
                     continue
-                raise LLMError(last_error_msg, provider="gemini") from None
+                raise LLMError(
+                    last_error_msg,
+                    provider="gemini",
+                    status_code=408,
+                    error_text="Request timed out",
+                ) from None
             except httpx.RequestError:
                 raise LLMError("Network communication error", provider="gemini") from None
             except LLMError:
@@ -88,5 +125,9 @@ class GeminiProvider(LLMProvider):
             except Exception:
                 raise LLMError("Unexpected generation failure", provider="gemini") from None
 
-        raise LLMError(last_error_msg, provider="gemini")
-
+        raise LLMError(
+            last_error_msg,
+            provider="gemini",
+            status_code=last_status_code,
+            error_text=last_err_text,
+        )

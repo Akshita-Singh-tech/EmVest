@@ -19,14 +19,16 @@ class Settings(BaseSettings):
     enable_twitter_ingestion: bool = False
     twitter_bearer_token: Optional[str] = None
 
-    # Phase 8: AI Assistant & LLM Service (Keys stay exclusively on backend)
+    # AI Assistant & LLM Service (Keys stay exclusively on backend)
+    groq_api_key: Optional[str] = None
+    groq_model: str = "llama-3.3-70b-versatile"
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-2.5-flash"
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-4o-mini"
-    default_llm_provider: str = "auto"  # "auto", "gemini", "openai", "deterministic"
+    default_llm_provider: str = "auto"  # "auto", "groq", "gemini", "openai", "deterministic"
 
-    model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
 
 
 settings = Settings()
