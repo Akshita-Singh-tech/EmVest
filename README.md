@@ -1,16 +1,15 @@
-# Emvest — AI-Powered Stock Market Intelligence & Agentic Investment Research
+# Emvest — Financial Intelligence & Investment Research Platform
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.128-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
-[![FinBERT](https://img.shields.io/badge/NLP-FinBERT-FF6F00?style=flat)](https://huggingface.co/ProsusAI/finbert)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Emvest** is a comprehensive, production-grade financial intelligence and agentic investment research platform designed specifically for the **Indian Equities Market (NSE / BSE)** and global macroeconomic tracking.
 
-It integrates live multi-source RSS scraping, an NLP FinBERT sentiment engine, dynamic sector/equity analytics, persistent user preferences, and a ChatGPT-style multi-turn financial research assistant.
+It integrates live multi-source RSS scraping, a financial lexicon sentiment engine, dynamic sector/equity analytics, persistent user preferences, and a grounded AI financial research assistant with provider-backed LLM generation (Gemini / OpenAI) and automatic rule-based fallback.
 
 ---
 
@@ -22,19 +21,20 @@ It integrates live multi-source RSS scraping, an NLP FinBERT sentiment engine, d
 - Categorizes articles across 10 core Indian sectors (*Banking & Financial Services, IT, Automobile, Energy & Oil, Pharma, FMCG, Metals, Infrastructure, Telecom, Macro*).
 - Live on-demand scrapers with immediate database persistence into SQLite (`emvest.db`).
 
-### 2. 🧠 FinBERT Financial Sentiment Engine
-- Evaluates real-time financial sentiment with confidence scores (`Positive`, `Neutral`, `Negative` on a `-1.0` to `+1.0` scale).
-- Extracts bulleted **Key Investment Takeaways** and classifies directional **Market Catalysts**.
+### 2. 🧠 Financial Lexicon Sentiment Engine
+- Evaluates real-time financial sentiment with confidence metrics (`Positive`, `Neutral`, `Negative` on a `-1.0` to `+1.0` scale).
+- Extracts bulleted **Key Investment Takeaways** and classifies directional **Market Catalysts** based on financial dictionaries.
 - Eliminates mock data — powers all UI feeds directly from verified publisher articles.
 
-### 3. 🤖 ChatGPT-Style Multi-Turn AI Financial Assistant
-- Multi-turn conversational memory with persistent session storage and clear-session management.
-- Covers **60+ equities**, 12 sector theses, 35+ fundamental and technical metrics (P/E, ROCE, RSI, MACD, EBITDA margins).
-- Pre-engineered capital allocation blueprints (₹10,000, ₹50,000, ₹1 Lakh, ₹10 Lakhs) across Conservative, Balanced, and Aggressive profiles.
-- Provides grounded source citations with direct links to real news articles.
+### 3. 🤖 Grounded AI Financial Assistant (LLM Layer + Rule-Based Fallback)
+- **Dual-Mode Generation:** Powered by a direct HTTP LLM provider layer (**Google Gemini** or **OpenAI**) with seamless fallback to an extensive deterministic financial reasoning engine.
+- **Provider Wrapper (`app/chatbot/llm/`):** Vendor-independent implementation using `httpx` (no bulky SDKs). Features configurable models (`gemini-2.5-flash`, `gpt-4o-mini`), 15s timeout, one retry on 5xx or timeout, and sanitized exception handling.
+- **Grounded & Untrusted Data Defense:** Formats retrieved database articles inside delimited `<sources>` blocks, instructs the LLM to ignore adversarial prompt injections inside articles, and filters citations to match only the sources actually referenced (`[1]`, `[2]`).
+- **SEBI / Non-Financial Advice Protection:** Enforces ending every response with a one-line "not financial advice" note.
+- **Coverage:** Covers **60+ equities**, 12 sector theses, 35+ fundamental and technical metrics (P/E, ROCE, RSI, MACD, EBITDA margins), and capital allocation blueprints.
 
 ### 4. 📊 Real-Time Sentiment Intelligence & Analytics Dashboard
-- **Composite FinBERT Index**: Dynamically calculated across all ingested articles.
+- **Composite Sentiment Index**: Dynamically calculated across all ingested articles.
 - **Sentiment Trajectory Chart**: Interactive Recharts area chart tracking market drift over time.
 - **Polarity Donut**: Proportional split of Bullish, Neutral, and Bearish market sentiments.
 - **Sector Comparison Bar Chart**: Relative momentum and sentiment rankings across all 10 Indian industry sectors.
@@ -59,8 +59,9 @@ flowchart TD
 
     subgraph Backend [FastAPI Backend (:8008)]
         Ingest["RSS Ingestion & Scraper Pipeline"]
-        FinBERT["FinBERT NLP Sentiment Engine"]
-        Agent["Chatbot & Financial Intelligence Agent"]
+        Sent["Financial Sentiment Engine"]
+        Agent["ChatAgent (RAG Engine)"]
+        LLM["LLM Layer (Gemini / OpenAI / Fallback)"]
         DB[(SQLite Database: emvest.db)]
         API["REST Endpoints /api/v1"]
     end
@@ -73,6 +74,45 @@ flowchart TD
     end
 
     ET --> Ingest
+    LM --> Ingest
+    MC --> Ingest
+    Ingest --> Sent
+    Sent --> DB
+    DB --> API
+    API --> Agent
+    Agent --> LLM
+    API --> News
+    API --> Analytics
+    API --> Chat
+    API --> Watchlist
+```
+
+---
+
+## ⚙️ Environment Variables & LLM Configuration
+
+Configure environment variables in `.env` (or pass via environment):
+
+| Variable | Default | Description |
+|---|---|---|
+| `DEFAULT_LLM_PROVIDER` | `auto` | Provider mode: `auto` (Gemini if key set, else OpenAI, else fallback), `gemini`, `openai`, or `deterministic` |
+| `GEMINI_API_KEY` | *(None)* | Google AI Studio API key (kept strictly on backend) |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model name |
+| `OPENAI_API_KEY` | *(None)* | OpenAI API key (kept strictly on backend) |
+| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model name |
+
+> **Privacy & Security Note:** API keys are read solely from backend environment variables and are never transmitted to the frontend, logged, or included in API error responses.
+
+---
+
+## 🧪 Testing Scope (Unit vs. Live Integration)
+
+- **Unit Tests:** Request/response payloads, 5xx retries, timeout handling, and prompt injection defense are fully unit-tested using `httpx.MockTransport` and faked providers (do not require an external API key or network access).
+- **Live Integration Check:** Use the dedicated script `backend/scripts/check_llm.py` to make a live test call with an active provider key:
+  ```bash
+  export GEMINI_API_KEY="your-key-here"
+  cd backend && python scripts/check_llm.py
+  ```
     LM --> Ingest
     MC --> Ingest
     Ingest --> FinBERT

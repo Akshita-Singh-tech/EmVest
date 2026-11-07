@@ -21,7 +21,9 @@ class Settings(BaseSettings):
 
     # Phase 8: AI Assistant & LLM Service (Keys stay exclusively on backend)
     gemini_api_key: Optional[str] = None
+    gemini_model: str = "gemini-2.5-flash"
     openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-4o-mini"
     default_llm_provider: str = "auto"  # "auto", "gemini", "openai", "deterministic"
 
     model_config = SettingsConfigDict(env_file="../.env", extra="ignore")

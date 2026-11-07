@@ -155,15 +155,37 @@
 
 ---
 
-## Project Status: All 9 Phases Complete & Verified
+## Phase 10: Provider-Backed LLM Layer & Grounded Generation (Completed)
 
-Emvest is now fully implemented and verified across all 9 roadmap phases:
-1. Foundation & Scaffolding
-2. UI Shell & Atomic Design
-3. Financial Analytics UI & Visualizations
-4. News Intelligence UI
-5. Personalization & Watchlist UI
-6. Backend Persistence, Database & Auth
-7. Ingestion Pipeline & FinBERT Sentiment Worker
-8. Grounded AI Assistant with Source Citations
-9. End-to-End Integration, Security & Release Readiness
+### Milestones & Evidence
+
+| Item | Implementation & Verification | Status |
+| :--- | :--- | :--- |
+| **Provider Architecture** | Implemented `LLMProvider` abstract interface and sanitized `LLMError` exception in `app/chatbot/llm/base.py` | Verified |
+| **Gemini Provider** | Direct REST implementation via `httpx` to `v1beta/models/{model}:generateContent` with root `systemInstruction` and `x-goog-api-key` header | Verified |
+| **OpenAI Provider** | Direct REST implementation via `httpx` to `v1/chat/completions` with bearer token authentication | Verified |
+| **Factory & Fallback** | `get_provider()` supporting `auto` (Gemini -> OpenAI -> None), `deterministic`, and specific provider modes | Verified |
+| **Grounded Answer Layer** | `ChatAgent._try_generate_llm_answer` formatting retrieved DB articles as numbered `[n]` sources within `<sources>` delimiters, enforcing prompt injection defense and "not financial advice" disclaimers | Verified |
+| **Citation Matching** | Answers scan for `[n]` citations, keep only valid references in response citations array, and drop non-existent indices | Verified |
+| **Unit Test Suite** | Created `backend/tests/test_llm.py` with 14 unit tests (factory selections, Gemini/OpenAI 5xx retries via `httpx.MockTransport`, faked agent generation, and prompt injection defense) | Verified (14 passed in 0.16s) |
+| **Live Integration Script** | Created `backend/scripts/check_llm.py` testing live connectivity with configured API key (isolated, no key logging) | Verified |
+
+```text
+============================= test session starts ==============================
+tests/test_llm.py::test_factory_deterministic_returns_none PASSED        [  7%]
+tests/test_llm.py::test_factory_auto_picks_gemini_when_key_set PASSED    [ 14%]
+tests/test_llm.py::test_factory_auto_picks_openai_when_only_openai_key_set PASSED [ 21%]
+tests/test_llm.py::test_factory_auto_returns_none_when_no_keys PASSED    [ 28%]
+tests/test_llm.py::test_factory_explicit_provider_selection PASSED       [ 35%]
+tests/test_llm.py::test_unit_gemini_request_handling_success PASSED      [ 42%]
+tests/test_llm.py::test_unit_gemini_5xx_retry_handling PASSED            [ 50%]
+tests/test_llm.py::test_unit_gemini_error_mapping_no_secret_leak PASSED  [ 57%]
+tests/test_llm.py::test_unit_openai_request_handling_success PASSED      [ 64%]
+tests/test_llm.py::test_unit_openai_5xx_retry_handling PASSED            [ 71%]
+tests/test_llm.py::test_unit_openai_error_mapping_no_secret_leak PASSED  [ 78%]
+tests/test_agent_faked_provider_success_path_with_valid_citations PASSED [ 85%]
+tests/test_agent_faked_provider_llmerror_triggers_rule_based_fallback PASSED [ 92%]
+tests/test_agent_prompt_injection_in_source_preserves_system_prompt PASSED [100%]
+============================== 14 passed in 0.16s ==============================
+```
+

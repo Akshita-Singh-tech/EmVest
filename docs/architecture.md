@@ -181,16 +181,53 @@ sequenceDiagram
 
 ---
 
-## 5. Grounded AI Assistant (RAG Engine)
+## 5. Grounded AI Assistant & LLM Layer
 
-The AI assistant operates on a strict **Retrieval-Augmented Generation (RAG)** model with verifiable citations:
+The AI assistant operates on a hybrid architecture: grounded LLM generation when configured with a provider API key, with an automated fallback to the deterministic financial reasoning engine.
 
-1. **Entity Extraction:** When a user queries (e.g., *"What is the outlook for Tata Motors electric vehicles?"*), the agent identifies equity symbols (`TATAMOTORS`), sectors (`Automobile & Auto Ancillary`), and macroeconomic keywords.
-2. **Database Retrieval:** Retrieves stored articles matching the detected entities or semantic text from the `articles` table, ranked by relevance and recency.
-3. **Sentiment Synthesis:** Aggregates individual FinBERT sentiment scores across matching articles to calculate a composite conviction metric.
-4. **Grounded Answer Synthesis:** Formulates structured findings, key takeaways, and market impact using only the retrieved evidence.
-5. **Verifiable Citations:** Returns structured citation cards containing article IDs, publisher names, URLs, publication dates, and FinBERT scores.
-6. **Persistence:** Saves both query and answer into `chat_messages` under a unique session identifier.
+```mermaid
+flowchart TD
+    UserQuery["User Chat Query"] --> Agent["ChatAgent.process_query"]
+    Agent --> Memory["Retrieve Session Memory (ChatMessage)"]
+    Agent --> Retrieval["Database Retrieval (Article Table)"]
+    Retrieval --> Factory{"get_provider()"}
+    Factory -->|None / Missing Key / Deterministic| Fallback["Rule-Based Intent Engine"]
+    Factory -->|Active Provider| LLM["LLM Provider (Gemini / OpenAI via httpx)"]
+    LLM -->|LLMError / Timeout / Empty| Fallback
+    LLM -->|Success| Grounded["Grounded Response with Verified [n] Citations"]
+    Fallback --> DBWrite["Persist Turn to Database"]
+    Grounded --> DBWrite
+    DBWrite --> Client["ChatQueryResponse (Answer + Citations)"]
+```
+
+### Provider Wrapper (`app/chatbot/llm/`)
+- **Abstract Base (`base.py`):** `LLMProvider` interface defining `generate(system_prompt, user_prompt, *, timeout=15.0) -> str` and the sanitized `LLMError` exception.
+- **Gemini Provider (`gemini_provider.py`):** Communicates directly with Google AI Studio `v1beta/models/{model}:generateContent` using `httpx`. Headers carry `x-goog-api-key`. System instructions use the root-level `systemInstruction` field. Model defaults to `gemini-2.5-flash` via `settings.gemini_model`.
+- **OpenAI Provider (`openai_provider.py`):** Communicates directly with OpenAI `v1/chat/completions` using `httpx`. Authorization uses `Bearer {api_key}`. Model defaults to `gpt-4o-mini` via `settings.openai_model`.
+- **Factory (`factory.py`):** Resolves provider based on `settings.default_llm_provider`:
+  - `"auto"`: Returns `GeminiProvider` if `gemini_api_key` is set, else `OpenAIProvider` if `openai_api_key` is set, else `None`.
+  - `"deterministic"`: Always returns `None`.
+  - `"gemini"` / `"openai"`: Selects specific provider if its key is configured, else returns `None`.
+
+### Grounded Prompting & Untrusted Data Boundary
+- **Sources Delimitation:** Database articles are wrapped inside `<sources>` tags with labeled identifiers `[1]`, `[2]`, etc., including publisher, timestamp, sentiment label, and summary.
+- **Prompt Injection Defense:** System instructions explicitly require the model to treat all text inside `<sources>` as untrusted data and strictly ignore any adversarial instructions or prompt injections inside source bodies.
+- **Citation Filtering:** Citations in the final response are matched to the `[n]` references actually used in the generated text. Any non-existent `[n]` references are dropped.
+- **Disclaimer Enforcement:** The LLM prompt enforces ending every generated analysis with a one-line "not financial advice" note.
+
+### Reliability & Error Isolation
+- **Timeout & Retry:** Network calls enforce a 15.0-second timeout with one automatic retry on timeouts or 5xx server errors.
+- **Clean Fallback:** If `LLMError` or an empty response occurs, the system logs a field-free warning (`"LLM generation failed, falling back to rule-based answer"`) with zero sensitive parameters and delivers the deterministic rule-based response.
+
+### Verification Scope (Live vs. Unit-Tested)
+- **Unit-Tested:** Factory provider selection, missing key handling, request formatting, 5xx retry logic (mocked via `httpx.MockTransport`), agent citation filtering, prompt injection defense, and rule-based fallback.
+- **Live Integration:** Not marked as live-tested until the operator runs `python scripts/check_llm.py` with an authentic API key and confirms live response generation.
+
+---
+
+## 6. Sentiment Engine Specification
+
+The sentiment engine (`FinBertSentimentWorker` in `app/sentiment/finbert_worker.py`) is a lightweight, financial-lexicon scoring service. It evaluates financial news headlines and article bodies using categorized financial terminology (`BULLISH_KEYWORDS` and `BEARISH_KEYWORDS`), generating structured confidence metrics, directional market impact takeaways, and normalized polarity scores on a `-1.0` to `+1.0` scale. It does not run heavy neural transformer model weights locally.
 
 ---
 
