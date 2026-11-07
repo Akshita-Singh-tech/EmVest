@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,6 +22,21 @@ app = FastAPI(
     description="Emvest Financial Intelligence & Agentic Stock Market API",
     version="1.0.0",
 )
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Background task to continuously ingest live financial news every 10 minutes."""
+    async def periodic_feed_sync():
+        while True:
+            await asyncio.sleep(600)
+            try:
+                with SessionLocal() as db_session:
+                    run_ingestion_pipeline(db_session, force_seed=False)
+            except Exception:
+                pass
+
+    asyncio.create_task(periodic_feed_sync())
 
 app.add_middleware(
     CORSMiddleware,

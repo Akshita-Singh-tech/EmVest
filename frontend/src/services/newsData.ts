@@ -154,20 +154,52 @@ export const sampleArticles: NewsArticle[] = [
   },
 ]
 
-let cachedArticles: NewsArticle[] = []
+const LIVE_ARTICLES_CACHE_KEY = 'emvest_live_articles_cache_v2'
+
+function loadInitialCache(): NewsArticle[] {
+  try {
+    const raw = localStorage.getItem(LIVE_ARTICLES_CACHE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed
+      }
+    }
+  } catch {
+    // Ignore storage parse errors
+  }
+  return []
+}
+
+let cachedArticles: NewsArticle[] = loadInitialCache()
 
 export function formatPublishedTime(dateStr?: string): string {
-  if (!dateStr) return 'Recent'
+  if (!dateStr) return 'Just now'
+  if (typeof dateStr === 'string' && (dateStr.includes('ago') || dateStr.includes('now'))) {
+    return dateStr
+  }
   try {
-    const d = new Date(dateStr)
+    let clean = String(dateStr).trim()
+    // Append 'Z' if missing so JavaScript parses it as UTC instead of local time
+    if (!clean.endsWith('Z') && !clean.includes('+') && clean.includes('T')) {
+      clean += 'Z'
+    } else if (!clean.endsWith('Z') && !clean.includes('+') && clean.includes(' ')) {
+      clean = clean.replace(' ', 'T') + 'Z'
+    }
+    const d = new Date(clean)
+    if (isNaN(d.getTime())) {
+      return 'Recent'
+    }
     const now = new Date()
     const diffMs = now.getTime() - d.getTime()
     const diffMins = Math.floor(diffMs / (1000 * 60))
-    if (diffMins >= 0 && diffMins < 1) return 'Just now'
-    if (diffMins >= 1 && diffMins < 60) return `${diffMins}m ago`
+    if (diffMins <= 0) return 'Just now'
+    if (diffMins < 60) return `${diffMins}m ago`
     const diffHours = Math.floor(diffMins / 60)
-    if (diffHours >= 1 && diffHours < 24) return `${diffHours}h ago`
-    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    if (diffHours < 24) return `${diffHours}h ago`
+    const diffDays = Math.floor(diffHours / 24)
+    if (diffDays < 7) return `${diffDays}d ago`
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
   } catch {
     return 'Recent'
   }
@@ -208,6 +240,16 @@ export function getNewsArticles(options: NewsFilterOptions = {}): NewsArticle[] 
     list.sort((a, b) => b.sentimentScore - a.sentimentScore)
   } else if (options.sortBy === 'lowest-sentiment') {
     list.sort((a, b) => a.sentimentScore - b.sentimentScore)
+  } else {
+    // Default / newest: sort by numeric ID descending (most recently ingested)
+    list.sort((a, b) => {
+      const numA = Number(a.id)
+      const numB = Number(b.id)
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numB - numA
+      }
+      return 0
+    })
   }
 
   return list
@@ -239,6 +281,11 @@ export async function fetchLiveNewsArticles(options: NewsFilterOptions = {}): Pr
         keyTakeaways: bi.key_takeaways || [],
         marketImpact: bi.market_impact || '',
       }))
+      try {
+        localStorage.setItem(LIVE_ARTICLES_CACHE_KEY, JSON.stringify(cachedArticles.slice(0, 100)))
+      } catch {
+        // Ignore storage write error
+      }
       return getNewsArticles(options)
     }
   } catch {

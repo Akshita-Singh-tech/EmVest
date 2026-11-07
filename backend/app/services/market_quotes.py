@@ -113,3 +113,4 @@ def get_realtime_market_data() -> Dict[str, Any]:
     }
     _LAST_CACHE_TIME = now
     return _QUOTE_CACHE
+
