@@ -1,23 +1,26 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
 import { EmptyState } from '../components/common/EmptyState'
-import { Star, Plus, Bot, X, Search, Newspaper } from '../components/ui/Icons'
+import { Star, Plus, Bot, X, Search, Newspaper, RefreshCw } from '../components/ui/Icons'
 import { searchMasterCompanies } from '../services/masterData'
 import {
   getWatchlistRecords,
   addSymbolToWatchlist,
   removeSymbolFromWatchlist,
+  updateWatchlistWithLiveQuotes,
 } from '../services/personalizationStore'
-import { apiAddWatchlist, apiDeleteWatchlist } from '../services/api'
+import { apiAddWatchlist, apiDeleteWatchlist, apiGetMarketQuotes } from '../services/api'
 import type { WatchlistRecord } from '../types/personalization'
 
 export function WatchlistPage() {
   const [watchlist, setWatchlist] = useState<WatchlistRecord[]>(getWatchlistRecords())
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedSentiment, setSelectedSentiment] = useState<'All' | 'Bullish' | 'Neutral' | 'Bearish'>('All')
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null)
 
   // Add symbol modal/drawer state
   const [showAddModal, setShowAddModal] = useState(false)
@@ -26,13 +29,41 @@ export function WatchlistPage() {
   const [addError, setAddError] = useState<string | null>(null)
   const [addSuccess, setAddSuccess] = useState<string | null>(null)
 
+  const fetchLiveQuotes = useCallback(async () => {
+    try {
+      setIsRefreshing(true)
+      const currentList = getWatchlistRecords()
+      const symbols = currentList.map((i) => i.symbol)
+      const res = await apiGetMarketQuotes(symbols)
+      if (res && res.watchlist && res.watchlist.length > 0) {
+        const updated = updateWatchlistWithLiveQuotes(res.watchlist)
+        setWatchlist(updated)
+        setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }))
+      }
+    } catch {
+      // Fallback prices in store remain intact
+    } finally {
+      setIsRefreshing(false)
+    }
+  }, [])
+
   useEffect(() => {
     const handleUpdate = () => {
       setWatchlist(getWatchlistRecords())
     }
     window.addEventListener('emvest_watchlist_updated', handleUpdate)
-    return () => window.removeEventListener('emvest_watchlist_updated', handleUpdate)
-  }, [])
+
+    // Initial live quote sync on page mount
+    fetchLiveQuotes()
+
+    // 30-second background polling for live equity prices
+    const interval = setInterval(fetchLiveQuotes, 30000)
+
+    return () => {
+      window.removeEventListener('emvest_watchlist_updated', handleUpdate)
+      clearInterval(interval)
+    }
+  }, [fetchLiveQuotes])
 
   // Autocomplete suggestions for adding symbols
   const symbolSuggestions = useMemo(() => {
@@ -83,6 +114,7 @@ export function WatchlistPage() {
     setAddSuccess(`Successfully added ${tickerInput.toUpperCase()} to watchlist!`)
     setTickerInput('')
     setNotesInput('')
+    void fetchLiveQuotes()
     setTimeout(() => {
       setAddSuccess(null)
       setShowAddModal(false)
@@ -260,9 +292,22 @@ export function WatchlistPage() {
                 Live prices integrated with continuous FinBERT sentiment signals.
               </CardDescription>
             </div>
-            <span className="text-xs text-slate-400 font-mono">
-              NSE/BSE Real-Time Feed
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium bg-emerald-950/60 border border-emerald-800/60 px-2.5 py-1 rounded-full font-mono">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live Real-Time Quotes {lastSyncTime ? `• ${lastSyncTime}` : ''}
+              </span>
+              <button
+                type="button"
+                onClick={() => fetchLiveQuotes()}
+                disabled={isRefreshing}
+                className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg border border-slate-800 transition cursor-pointer"
+                title="Refresh real-time quotes"
+                aria-label="Refresh quotes"
+              >
+                <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-indigo-400' : ''} />
+              </button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

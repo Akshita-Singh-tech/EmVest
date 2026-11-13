@@ -141,7 +141,7 @@ export interface BackendChatSessionSummary {
   last_message_preview?: string | null
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8008/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 export function getAuthToken(): string | null {
   try {
@@ -167,6 +167,71 @@ export function clearAuthToken(): void {
   }
 }
 
+export function authHeaders(extraHeaders: Record<string, string> = {}): Record<string, string> {
+  const token = getAuthToken()
+  if (token) {
+    return {
+      ...extraHeaders,
+      Authorization: `Bearer ${token}`,
+    }
+  }
+  return extraHeaders
+}
+
+export interface AuthUser {
+  id: number
+  email: string
+  full_name: string
+  is_active?: boolean
+  created_at?: string
+}
+
+export interface AuthTokenResponse {
+  access_token: string
+  token_type: string
+  user: AuthUser
+}
+
+export async function apiLogin(email: string, password: string): Promise<AuthTokenResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+  })
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    throw new Error(errorBody.detail || 'Incorrect email or password.')
+  }
+  const data: AuthTokenResponse = await response.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+export async function apiSignup(fullName: string, email: string, password: string): Promise<AuthTokenResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ full_name: fullName.trim(), email: email.trim().toLowerCase(), password }),
+  })
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    throw new Error(errorBody.detail || 'Failed to create account.')
+  }
+  const data: AuthTokenResponse = await response.json()
+  setAuthToken(data.access_token)
+  return data
+}
+
+export async function apiGetMe(): Promise<AuthUser> {
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    headers: authHeaders(),
+  })
+  if (!response.ok) {
+    throw new Error(`Authentication check failed: ${response.status}`)
+  }
+  return response.json()
+}
+
 export async function fetchHealth(): Promise<HealthResponse> {
   const response = await fetch(`${API_BASE_URL}/health`)
   if (!response.ok) {
@@ -180,7 +245,9 @@ export async function fetchHealth(): Promise<HealthResponse> {
 // ============================================================================
 
 export async function apiGetPreferences(): Promise<BackendPreferences> {
-  const response = await fetch(`${API_BASE_URL}/preferences`)
+  const response = await fetch(`${API_BASE_URL}/preferences`, {
+    headers: authHeaders(),
+  })
   if (!response.ok) {
     throw new Error(`Failed to fetch preferences: ${response.status}`)
   }
@@ -190,7 +257,7 @@ export async function apiGetPreferences(): Promise<BackendPreferences> {
 export async function apiUpdatePreferences(data: BackendPreferences): Promise<BackendPreferences> {
   const response = await fetch(`${API_BASE_URL}/preferences`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(data),
   })
   if (!response.ok) {
@@ -200,7 +267,9 @@ export async function apiUpdatePreferences(data: BackendPreferences): Promise<Ba
 }
 
 export async function apiGetWatchlist(): Promise<BackendWatchlistItem[]> {
-  const response = await fetch(`${API_BASE_URL}/watchlist`)
+  const response = await fetch(`${API_BASE_URL}/watchlist`, {
+    headers: authHeaders(),
+  })
   if (!response.ok) {
     throw new Error(`Failed to fetch watchlist: ${response.status}`)
   }
@@ -215,7 +284,7 @@ export async function apiAddWatchlist(item: {
 }): Promise<BackendWatchlistItem> {
   const response = await fetch(`${API_BASE_URL}/watchlist`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify(item),
   })
   if (!response.ok) {
@@ -228,6 +297,7 @@ export async function apiAddWatchlist(item: {
 export async function apiDeleteWatchlist(symbol: string): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/watchlist/${symbol.toUpperCase()}`, {
     method: 'DELETE',
+    headers: authHeaders(),
   })
   if (!response.ok && response.status !== 404) {
     throw new Error(`Failed to delete item: ${response.status}`)
@@ -397,8 +467,11 @@ export interface MarketQuotesResponse {
   watchlist: MarketQuoteEquity[]
 }
 
-export async function apiGetMarketQuotes(): Promise<MarketQuotesResponse> {
-  const response = await fetch(`${API_BASE_URL}/analytics/quotes`, {
+export async function apiGetMarketQuotes(symbols?: string[]): Promise<MarketQuotesResponse> {
+  const url = symbols && symbols.length > 0
+    ? `${API_BASE_URL}/analytics/quotes?symbols=${encodeURIComponent(symbols.join(','))}`
+    : `${API_BASE_URL}/analytics/quotes`
+  const response = await fetch(url, {
     signal: AbortSignal.timeout(6000),
   })
   if (!response.ok) {

@@ -134,10 +134,13 @@ def get_company_analytics(symbol: str, db: Session = Depends(get_db)):
 
 
 
+from typing import List, Dict, Any, Optional
+
 from app.services.market_quotes import get_realtime_market_data
 
 
 @router.get("/quotes")
-def get_market_quotes():
+def get_market_quotes(symbols: Optional[str] = None):
     """Returns verified real-time Indian market indices (Nifty, Sensex, Bank Nifty, VIX) and equity quotes."""
-    return get_realtime_market_data()
+    req_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None
+    return get_realtime_market_data(requested_symbols=req_list)

@@ -1,6 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, Search, Bell, Sparkles } from '../ui/Icons'
+import { Menu, Search, Sparkles, LogOut } from '../ui/Icons'
 import { Badge } from '../ui/Badge'
+import { Button } from '../ui/Button'
+import { useAuth } from '../../context/AuthContext'
 
 interface NavbarProps {
   onToggleSidebar: () => void
@@ -19,6 +21,17 @@ const pageTitles: Record<string, string> = {
 export function Navbar({ onToggleSidebar }: NavbarProps) {
   const location = useLocation()
   const title = pageTitles[location.pathname] || 'Dashboard'
+  const { user, isAuthenticated, openAuthModal, logout } = useAuth()
+
+  // Calculate initials from user name
+  const initials = user?.full_name
+    ? user.full_name
+        .split(' ')
+        .map((p) => p[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : 'EM'
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-slate-900/80 backdrop-blur-md border-b border-slate-800/80 px-4 sm:px-6 flex items-center justify-between gap-4">
@@ -57,7 +70,7 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
         </div>
       </div>
 
-      {/* Right: Market Status & Profile Pill */}
+      {/* Right: Market Status, Action & Auth Controls */}
       <div className="flex items-center gap-3">
         <div className="hidden sm:flex items-center gap-2">
           <Badge variant="success" size="sm" dot>
@@ -73,23 +86,48 @@ export function Navbar({ onToggleSidebar }: NavbarProps) {
           <span>Ask Agent</span>
         </Link>
 
-        <button
-          type="button"
-          className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-indigo-500" />
-        </button>
-
-        <Link
-          to="/profile"
-          className="flex items-center gap-2 pl-2 border-l border-slate-800 hover:opacity-90 transition"
-        >
-          <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white shadow-sm ring-1 ring-slate-700">
-            AS
+        {isAuthenticated && user ? (
+          <div className="flex items-center gap-2.5 pl-2 border-l border-slate-800">
+            <Link
+              to="/profile"
+              className="flex items-center gap-2 hover:opacity-90 transition"
+              title="View Investor Profile"
+            >
+              <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-semibold text-white shadow-sm ring-1 ring-slate-700">
+                {initials}
+              </div>
+              <span className="hidden md:inline text-xs font-medium text-white truncate max-w-[120px]">
+                {user.full_name.split(' ')[0]}
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={logout}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition cursor-pointer"
+              title="Log Out"
+              aria-label="Log out"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
-        </Link>
+        ) : (
+          <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => openAuthModal('login')}
+            >
+              Sign In
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => openAuthModal('signup')}
+              className="hidden sm:inline-flex"
+            >
+              Register
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   )

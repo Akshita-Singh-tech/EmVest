@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # AI Assistant & LLM Service (Keys stay exclusively on backend)
     groq_api_key: Optional[str] = None
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "qwen/qwen3.8-27b"
     gemini_api_key: Optional[str] = None
     gemini_model: str = "gemini-2.5-flash"
     openai_api_key: Optional[str] = None

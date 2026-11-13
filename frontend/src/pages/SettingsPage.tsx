@@ -6,7 +6,9 @@ import { RefreshCw, Sparkles, Newspaper } from '../components/ui/Icons'
 import { fetchHealth, apiTriggerIngestion, type HealthResponse } from '../services/api'
 
 export function SettingsPage() {
-  const [apiUrl, setApiUrl] = useState('http://localhost:8008/api/v1')
+  const [apiUrl, setApiUrl] = useState(() => {
+    return typeof window !== 'undefined' ? `${window.location.origin}/api/v1` : '/api/v1'
+  })
   const [rssEnabled, setRssEnabled] = useState(() => {
     return localStorage.getItem('emvest_rss_enabled') !== 'false'
   })

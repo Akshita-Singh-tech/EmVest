@@ -14,33 +14,47 @@ import {
 } from '../components/ui/Icons'
 import { getNewsArticles, fetchLiveNewsArticles } from '../services/newsData'
 import { apiGetMarketQuotes, type MarketQuoteIndex, type MarketQuoteEquity } from '../services/api'
+import { getWatchlistRecords, updateWatchlistWithLiveQuotes } from '../services/personalizationStore'
 import type { NewsArticle } from '../types/news'
 
 const defaultIndices: MarketQuoteIndex[] = [
-  { name: 'NIFTY 50', value: '25,030.35', raw_price: 25030.35, change: '+2.01%', positive: true, sentiment: 'Bullish (+2.01%)' },
-  { name: 'SENSEX', value: '81,028.02', raw_price: 81028.02, change: '+2.17%', positive: true, sentiment: 'Bullish (+2.17%)' },
-  { name: 'BANK NIFTY', value: '59,086.00', raw_price: 59086.00, change: '+2.27%', positive: true, sentiment: 'Bullish (+2.27%)' },
-  { name: 'INDIA VIX', value: '17.46', raw_price: 17.46, change: '+12.10%', positive: true, sentiment: 'Low Volatility' },
+  { name: 'NIFTY 50', value: '25,255.05', raw_price: 25255.05, change: '+0.84%', positive: true, sentiment: 'Bullish (+0.84%)' },
+  { name: 'SENSEX', value: '81,879.40', raw_price: 81879.40, change: '+0.95%', positive: true, sentiment: 'Bullish (+0.95%)' },
+  { name: 'BANK NIFTY', value: '60,792.40', raw_price: 60792.40, change: '+1.76%', positive: true, sentiment: 'Bullish (+1.76%)' },
+  { name: 'INDIA VIX', value: '17.55', raw_price: 17.55, change: '+0.77%', positive: true, sentiment: 'Low Volatility' },
 ]
 
 const defaultWatchlist: MarketQuoteEquity[] = [
-  { symbol: 'RELIANCE', name: 'Reliance Industries', price: '₹1,320.00', raw_price: 1320.0, change: '+0.50%', positive: true, sentiment: 'Bullish' },
-  { symbol: 'TCS', name: 'Tata Consultancy Services', price: '₹2,498.50', raw_price: 2498.5, change: '+0.11%', positive: true, sentiment: 'Neutral' },
-  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', price: '₹788.25', raw_price: 788.25, change: '+3.72%', positive: true, sentiment: 'Bullish' },
-  { symbol: 'INFY', name: 'Infosys Ltd', price: '₹1,181.40', raw_price: 1181.4, change: '+1.20%', positive: true, sentiment: 'Bullish' },
-  { symbol: 'SBIN', name: 'State Bank of India', price: '₹1,018.50', raw_price: 1018.5, change: '+1.85%', positive: true, sentiment: 'Bullish' },
+  { symbol: 'RELIANCE', name: 'Reliance Industries Ltd', price: '₹1,335.40', raw_price: 1335.4, change: '+0.83%', positive: true, sentiment: 'Bullish' },
+  { symbol: 'TCS', name: 'Tata Consultancy Services Ltd', price: '₹2,472.10', raw_price: 2472.1, change: '-0.13%', positive: false, sentiment: 'Neutral' },
+  { symbol: 'HDFCBANK', name: 'HDFC Bank Ltd', price: '₹806.60', raw_price: 806.6, change: '+1.06%', positive: true, sentiment: 'Bullish' },
+  { symbol: 'INFY', name: 'Infosys Ltd', price: '₹1,155.00', raw_price: 1155.0, change: '+0.08%', positive: true, sentiment: 'Neutral' },
+  { symbol: 'TATAMOTORS', name: 'Tata Motors Ltd', price: '₹299.25', raw_price: 299.25, change: '+1.44%', positive: true, sentiment: 'Bullish' },
 ]
 
 export function DashboardPage() {
   const [articles, setArticles] = useState<NewsArticle[]>(() => getNewsArticles().slice(0, 4))
   const [indices, setIndices] = useState<MarketQuoteIndex[]>(defaultIndices)
-  const [watchlist, setWatchlist] = useState<MarketQuoteEquity[]>(defaultWatchlist)
+  const [watchlist, setWatchlist] = useState<MarketQuoteEquity[]>(() => {
+    const saved = getWatchlistRecords()
+    if (saved.length === 0) return defaultWatchlist
+    return saved.slice(0, 6).map((s) => ({
+      symbol: s.symbol,
+      name: s.name,
+      price: s.price,
+      raw_price: 0,
+      change: s.change,
+      positive: s.change.startsWith('+'),
+      sentiment: s.sentiment,
+    }))
+  })
   const [lastRefreshed, setLastRefreshed] = useState<string>('Live')
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false)
 
-  const fetchUpdatedData = async () => {
+  const syncQuotesAndNews = async () => {
+    const userSymbols = getWatchlistRecords().map((r) => r.symbol.toUpperCase())
     const [quoteRes, newsRes] = await Promise.allSettled([
-      apiGetMarketQuotes(),
+      apiGetMarketQuotes(userSymbols),
       fetchLiveNewsArticles({ sortBy: 'newest' }),
     ])
 
@@ -49,7 +63,11 @@ export function DashboardPage() {
         setIndices(quoteRes.value.indices)
       }
       if (quoteRes.value.watchlist && quoteRes.value.watchlist.length > 0) {
-        setWatchlist(quoteRes.value.watchlist)
+        updateWatchlistWithLiveQuotes(quoteRes.value.watchlist)
+        const trackedQuotes = quoteRes.value.watchlist.filter((q) =>
+          userSymbols.includes(q.symbol.toUpperCase())
+        )
+        setWatchlist(trackedQuotes.length > 0 ? trackedQuotes.slice(0, 6) : quoteRes.value.watchlist.slice(0, 6))
       }
     }
 
@@ -63,7 +81,7 @@ export function DashboardPage() {
   const handleManualRefresh = async () => {
     setIsRefreshing(true)
     try {
-      await fetchUpdatedData()
+      await syncQuotesAndNews()
     } finally {
       setIsRefreshing(false)
     }
@@ -74,8 +92,9 @@ export function DashboardPage() {
 
     const runSync = async () => {
       try {
+        const userSymbols = getWatchlistRecords().map((r) => r.symbol.toUpperCase())
         const [quoteRes, newsRes] = await Promise.allSettled([
-          apiGetMarketQuotes(),
+          apiGetMarketQuotes(userSymbols),
           fetchLiveNewsArticles({ sortBy: 'newest' }),
         ])
 
@@ -86,7 +105,11 @@ export function DashboardPage() {
             setIndices(quoteRes.value.indices)
           }
           if (quoteRes.value.watchlist && quoteRes.value.watchlist.length > 0) {
-            setWatchlist(quoteRes.value.watchlist)
+            updateWatchlistWithLiveQuotes(quoteRes.value.watchlist)
+            const trackedQuotes = quoteRes.value.watchlist.filter((q) =>
+              userSymbols.includes(q.symbol.toUpperCase())
+            )
+            setWatchlist(trackedQuotes.length > 0 ? trackedQuotes.slice(0, 6) : quoteRes.value.watchlist.slice(0, 6))
           }
         }
 
@@ -101,7 +124,7 @@ export function DashboardPage() {
     }
 
     void runSync()
-    const timer = setInterval(() => { void runSync() }, 60000)
+    const timer = setInterval(() => { void runSync() }, 30000)
     return () => {
       isMounted = false
       clearInterval(timer)

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
-import { User, Bell, Sparkles } from '../components/ui/Icons'
+import { User, Bell, Sparkles, ShieldCheck } from '../components/ui/Icons'
 import { CompanyPicker } from '../components/personalization/CompanyPicker'
 import { masterSectors } from '../services/masterData'
+import { useAuth } from '../context/AuthContext'
 import {
   getUserProfile,
   getUserPreferences,
@@ -23,11 +24,29 @@ import type {
 } from '../types/personalization'
 
 export function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile>(() => getUserProfile())
+  const { user, isAuthenticated, openAuthModal } = useAuth()
+  const [profile, setProfile] = useState<UserProfile>(() => {
+    const p = getUserProfile()
+    if (user) {
+      return { ...p, fullName: user.full_name, email: user.email }
+    }
+    return p
+  })
   const [preferences, setPreferences] = useState<UserPreferences>(() => getUserPreferences())
   const [errors, setErrors] = useState<ProfileFormErrors>({})
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Update profile fields when authenticated user loads
+  useEffect(() => {
+    if (user) {
+      setProfile((prev) => ({
+        ...prev,
+        fullName: user.full_name || prev.fullName,
+        email: user.email || prev.email,
+      }))
+    }
+  }, [user])
 
   // Load preferences from backend DB on mount
   useEffect(() => {
@@ -149,6 +168,30 @@ export function ProfilePage() {
           </Badge>
         )}
       </div>
+
+      {/* Guest vs Authenticated User Banner */}
+      {!isAuthenticated ? (
+        <div className="p-4 rounded-xl bg-gradient-to-r from-indigo-950/70 to-slate-900 border border-indigo-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-sm text-white">Save Your Portfolio & Strategy</div>
+            <p className="text-xs text-slate-300">
+              You are currently browsing as a guest. Create a free account or sign in to permanently save your watchlist and strategy across all devices.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" type="button" onClick={() => openAuthModal('signup')}>Create Account</Button>
+            <Button size="sm" type="button" variant="outline" onClick={() => openAuthModal('login')}>Sign In</Button>
+          </div>
+        </div>
+      ) : user ? (
+        <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-xs text-emerald-300">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-emerald-400 shrink-0" />
+            <span>Authenticated Account #{user.id} • Password encrypted with salted Bcrypt & JWT active</span>
+          </div>
+          <span className="font-mono text-emerald-400 font-semibold">{user.email}</span>
+        </div>
+      ) : null}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Account & Experience Details */}

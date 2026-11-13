@@ -11,6 +11,7 @@ import {
   apiGetWatchlist,
   apiAddWatchlist,
   apiDeleteWatchlist,
+  type MarketQuoteEquity,
 } from './api'
 
 const PROFILE_STORAGE_KEY = 'emvest_user_profile_v1'
@@ -45,8 +46,8 @@ export const defaultWatchlist: WatchlistRecord[] = [
     name: 'Reliance Industries Ltd',
     sector: 'Energy, Oil & Gas',
     addedAt: '2026-11-01',
-    price: '₹1,328.40',
-    change: '+1.42%',
+    price: '₹1,320.00',
+    change: '+0.50%',
     sentiment: 'Bullish',
     sentimentScore: 0.74,
     notes: 'Core long-term conglomerate holding; watch retail EBITDA expansion.',
@@ -56,8 +57,8 @@ export const defaultWatchlist: WatchlistRecord[] = [
     name: 'Tata Consultancy Services Ltd',
     sector: 'Information Technology',
     addedAt: '2026-11-02',
-    price: '₹4,120.00',
-    change: '+0.31%',
+    price: '₹2,498.50',
+    change: '+0.11%',
     sentiment: 'Neutral',
     sentimentScore: 0.52,
     notes: 'Defensive IT pick; tracking deal conversions in BFSI.',
@@ -67,8 +68,8 @@ export const defaultWatchlist: WatchlistRecord[] = [
     name: 'HDFC Bank Ltd',
     sector: 'Banking & Financial Services',
     addedAt: '2026-11-02',
-    price: '₹1,745.80',
-    change: '-0.52%',
+    price: '₹788.25',
+    change: '+3.72%',
     sentiment: 'Bearish',
     sentimentScore: 0.38,
     notes: 'Monitoring post-merger deposit growth and NIM recovery.',
@@ -78,8 +79,8 @@ export const defaultWatchlist: WatchlistRecord[] = [
     name: 'Infosys Ltd',
     sector: 'Information Technology',
     addedAt: '2026-11-03',
-    price: '₹1,890.15',
-    change: '+2.14%',
+    price: '₹1,181.40',
+    change: '+1.20%',
     sentiment: 'Bullish',
     sentimentScore: 0.69,
     notes: 'GenAI enterprise traction.',
@@ -89,8 +90,8 @@ export const defaultWatchlist: WatchlistRecord[] = [
     name: 'Tata Motors Ltd',
     sector: 'Automobile & Auto Ancillary',
     addedAt: '2026-11-04',
-    price: '₹840.10',
-    change: '+1.85%',
+    price: '₹292.00',
+    change: '-0.58%',
     sentiment: 'Bullish',
     sentimentScore: 0.82,
     notes: 'Domestic EV dominance (>65% market share) & JLR cash generation.',
@@ -178,11 +179,66 @@ export async function syncPreferencesFromBackend(): Promise<UserPreferences | nu
 export function getWatchlistRecords(): WatchlistRecord[] {
   try {
     const raw = localStorage.getItem(WATCHLIST_STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
+    if (raw) {
+      const parsed: WatchlistRecord[] = JSON.parse(raw)
+      // Auto-migrate legacy hardcoded split-unadjusted placeholder prices
+      let modified = false
+      const sanitized = parsed.map((item) => {
+        if (item.symbol === 'TCS' && (item.price === '₹4,120.00' || item.price === '₹4,120')) {
+          modified = true
+          return { ...item, price: '₹2,498.50', change: '+0.11%' }
+        }
+        if (item.symbol === 'HDFCBANK' && (item.price === '₹1,745.80' || item.price === '₹1,745')) {
+          modified = true
+          return { ...item, price: '₹788.25', change: '+3.72%' }
+        }
+        if (item.symbol === 'INFY' && (item.price === '₹1,890.15' || item.price === '₹1,890')) {
+          modified = true
+          return { ...item, price: '₹1,181.40', change: '+1.20%' }
+        }
+        if (item.symbol === 'TATAMOTORS' && (item.price === '₹840.10' || item.price === '₹840')) {
+          modified = true
+          return { ...item, price: '₹292.00', change: '-0.58%' }
+        }
+        return item
+      })
+      if (modified) {
+        localStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(sanitized))
+        return sanitized
+      }
+      return parsed
+    }
   } catch {
     // Ignore storage parse error
   }
   return defaultWatchlist
+}
+
+export function updateWatchlistWithLiveQuotes(quotes: MarketQuoteEquity[]): WatchlistRecord[] {
+  const current = getWatchlistRecords()
+  if (!quotes || quotes.length === 0) return current
+
+  const quoteMap = new Map(quotes.map((q) => [q.symbol.toUpperCase(), q]))
+  let changed = false
+
+  const updated = current.map((item) => {
+    const q = quoteMap.get(item.symbol.toUpperCase())
+    if (!q) return item
+    if (item.price !== q.price || item.change !== q.change) {
+      changed = true
+      return {
+        ...item,
+        price: q.price,
+        change: q.change,
+      }
+    }
+    return item
+  })
+
+  if (changed) {
+    saveWatchlistRecords(updated)
+  }
+  return updated
 }
 
 export function saveWatchlistRecords(records: WatchlistRecord[]): void {

@@ -30,7 +30,7 @@ def get_provider(
     """
     mode = (provider_type or settings.default_llm_provider or "auto").lower().strip()
     q_key = groq_key if groq_key is not None else settings.groq_api_key
-    q_model = groq_model or settings.groq_model or "llama-3.3-70b-versatile"
+    q_model = groq_model or settings.groq_model or "qwen/qwen3.8-27b"
     g_key = gemini_key if gemini_key is not None else settings.gemini_api_key
     g_model = gemini_model or settings.gemini_model or "gemini-2.5-flash"
     o_key = openai_key if openai_key is not None else settings.openai_api_key
