@@ -10,6 +10,7 @@ from app.database.session import get_db
 from app.models.chat import ChatMessage, ChatSession
 from app.models.user import User
 from app.api.auth import get_current_user
+from app.core.security import get_optional_current_user
 from app.chatbot.agent import ChatAgent
 from app.schemas.chat import (
     ChatQueryRequest,
@@ -27,12 +28,14 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 @router.get("/sessions", response_model=List[ChatSessionSummary])
 def list_chat_sessions(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(lambda: None),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> List[ChatSessionSummary]:
-    """List all saved chat threads with preview and message counts (ChatGPT-style)."""
+    """List all saved chat threads with preview and message counts (scoped to current user)."""
     query = db.query(ChatSession)
     if current_user:
-        query = query.filter((ChatSession.user_id == current_user.id) | (ChatSession.user_id.is_(None)))
+        query = query.filter(ChatSession.user_id == current_user.id)
+    else:
+        query = query.filter(ChatSession.user_id.is_(None))
     sessions = query.order_by(ChatSession.updated_at.desc()).all()
 
     result: List[ChatSessionSummary] = []
@@ -66,7 +69,7 @@ def list_chat_sessions(
 def create_chat_session(
     body: Optional[ChatSessionCreate] = None,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(lambda: None),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ChatSessionSummary:
     """Create a new chat conversation session."""
     session_id = f"sess-{uuid.uuid4().hex[:12]}"
@@ -98,7 +101,7 @@ def create_chat_session(
 def query_chat(
     request: ChatQueryRequest,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(lambda: None),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ChatQueryResponse:
     """Submit a query to the AI Assistant with multi-turn memory and source citations."""
     user_id = current_user.id if current_user else None
@@ -110,8 +113,17 @@ def query_chat(
 def get_chat_history(
     session_id: str,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> ChatHistoryResponse:
     """Retrieve full conversation history and verifiable citations for a chat session."""
+    sess = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if sess and sess.user_id is not None:
+        if not current_user or current_user.id != sess.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this conversation thread.",
+            )
+
     messages = (
         db.query(ChatMessage)
         .filter(ChatMessage.session_id == session_id)
@@ -144,8 +156,17 @@ def get_chat_history(
 def clear_chat_history(
     session_id: str,
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
 ) -> dict:
     """Delete a conversation thread and its messages."""
+    sess = db.query(ChatSession).filter(ChatSession.id == session_id).first()
+    if sess and sess.user_id is not None:
+        if not current_user or current_user.id != sess.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied.",
+            )
+
     db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete()
     db.query(ChatSession).filter(ChatSession.id == session_id).delete()
     db.commit()

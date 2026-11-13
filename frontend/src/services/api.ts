@@ -394,8 +394,13 @@ export async function apiGetChatHistory(sessionId: string): Promise<BackendChatH
 }
 
 export async function apiClearChatHistory(sessionId: string): Promise<{ status: string; session_id: string }> {
+  const token = getAuthToken()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
   const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
     method: 'DELETE',
+    headers,
     signal: AbortSignal.timeout(8000),
   })
   if (!response.ok) {
