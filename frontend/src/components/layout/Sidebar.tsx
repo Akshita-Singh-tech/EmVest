@@ -7,7 +7,6 @@ import {
   Star,
   Bot,
   User,
-  Settings,
   X,
   Sparkles,
 } from '../ui/Icons'
@@ -26,7 +25,6 @@ const navItems = [
   { name: 'Watchlist', path: '/watchlist', icon: Star },
   { name: 'AI Assistant', path: '/chat', icon: Bot, badge: 'Agentic' },
   { name: 'Profile', path: '/profile', icon: User },
-  { name: 'Settings', path: '/settings', icon: Settings },
 ]
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {

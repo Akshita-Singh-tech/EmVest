@@ -8,7 +8,6 @@ import { NewsPage } from './pages/NewsPage'
 import { WatchlistPage } from './pages/WatchlistPage'
 import { ChatbotPage } from './pages/ChatbotPage'
 import { ProfilePage } from './pages/ProfilePage'
-import { SettingsPage } from './pages/SettingsPage'
 
 export default function App() {
   return (
@@ -23,7 +22,6 @@ export default function App() {
             <Route path="/watchlist" element={<WatchlistPage />} />
             <Route path="/chat" element={<ChatbotPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

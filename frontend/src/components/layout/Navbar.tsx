@@ -15,7 +15,6 @@ const pageTitles: Record<string, string> = {
   '/watchlist': 'Tracked Watchlists',
   '/chat': 'AI Investment Assistant',
   '/profile': 'Investor Profile',
-  '/settings': 'System Settings',
 }
 
 export function Navbar({ onToggleSidebar }: NavbarProps) {
